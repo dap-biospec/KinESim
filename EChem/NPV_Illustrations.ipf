@@ -68,7 +68,59 @@
 
 
 
+Function NernstNPVOx(w,Eapp) : FitFunc
+	Wave w
+	Variable Eapp
 
+	//CurveFitDialog/ These comments were created by the Curve Fitting dialog. Altering them will
+	//CurveFitDialog/ make the function less convenient to work with in the Curve Fitting dialog.
+	//CurveFitDialog/ Equation:
+	//CurveFitDialog/ //	return w[0]+w[1]/(1+exp(-w[3]*38.94*(w[2]-Eapp)))
+	//CurveFitDialog/ 
+	//CurveFitDialog/ f(Eapp) = offs+ampl/(1+exp(n*38.94*(E0-Eapp)))
+	//CurveFitDialog/ 
+	//CurveFitDialog/ End of Equation
+	//CurveFitDialog/ Independent Variables 1
+	//CurveFitDialog/ Eapp
+	//CurveFitDialog/ Coefficients 7
+	//CurveFitDialog/ w[0] = offs
+	//CurveFitDialog/ w[1] = ampl0
+	//CurveFitDialog/ w[2] = E0
+	//CurveFitDialog/ w[3] = n0
+	//CurveFitDialog/ w[4] = ampl1
+	//CurveFitDialog/ w[5] = E1
+	//CurveFitDialog/ w[6] = n1
+	
+	return w[0]+w[1]*(-(1-1/(1+exp(w[3]*38.94*(w[2]-Eapp)))) +w[4] *(1- 1/(1+exp((w[3]+w[6])*38.94*(w[2]-w[5]-Eapp))))) 
+End
+
+
+Function NernstNPVRd(w,Eapp) : FitFunc
+	Wave w
+	Variable Eapp
+
+	//CurveFitDialog/ These comments were created by the Curve Fitting dialog. Altering them will
+	//CurveFitDialog/ make the function less convenient to work with in the Curve Fitting dialog.
+	//CurveFitDialog/ Equation:
+	//CurveFitDialog/ //	return w[0]+w[1]/(1+exp(-w[3]*38.94*(w[2]-Eapp)))
+	//CurveFitDialog/ 
+	//CurveFitDialog/ f(Eapp) = offs+ampl/(1+exp(n*38.94*(E0-Eapp)))
+	//CurveFitDialog/ 
+	//CurveFitDialog/ End of Equation
+	//CurveFitDialog/ Independent Variables 1
+	//CurveFitDialog/ Eapp
+	//CurveFitDialog/ Coefficients 7
+	//CurveFitDialog/ w[0] = offs
+	//CurveFitDialog/ w[1] = ampl0
+	//CurveFitDialog/ w[2] = E0
+	//CurveFitDialog/ w[3] = n0
+	//CurveFitDialog/ w[4] = ampl1
+	//CurveFitDialog/ w[5] = E1
+	//CurveFitDialog/ w[6] = n1
+	
+	return w[0]+w[1]*(1/(1+exp(w[3]*38.94*(w[2]-Eapp))) - w[4]/(1+exp((w[3]+w[6])*38.94*(w[2]+w[5]-Eapp))) )
+	
+End
 
 //**************************************************************************************************************************************
 //
@@ -1212,14 +1264,14 @@ function processNPV(theSimW, theClbW, CWave, setE0ClbW, dirNPV, SetC)
 				variable noProg = 2; 
 				if (dirNPV > 0) // oxidation 
 					cW[4] = 0.25;
-					outW =  NernstNPVRd(cW,theClbW[p] )
+					//outW =  NernstNPVRd(cW,theClbW[p] )
 					FuncFit  /H=holdStr0 /N=(noUpd) /W=(noProg) /Q NernstNPVRd, cW, datW  /X=theClbW  /C=constrW0 /E=epsilonW //  /D=outW
 					FuncFit  /H=holdStr1 /N=(noUpd) /W=(noProg) /Q NernstNPVRd, cW, datW  /X=theClbW  /C=constrW1 /E=epsilonW   /D=outW
 					FuncFit  /H=holdStr2 /N=(noUpd) /W=(noProg) /Q NernstNPVRd, cW, datW  /X=theClbW  /C=constrW2 /E=epsilonW   /D=outW
 					FuncFit  /H=holdStr3 /N=(noUpd) /W=(noProg) /Q NernstNPVRd, cW, datW  /X=theClbW  /C=constrW3 /E=epsilonW  /D=outW
 				else // reduction
 					cW[4] =  0.25;
-					outW =  NernstNPVOx(cW,theClbW[p] )
+					//outW =  NernstNPVOx(cW,theClbW[p] )
 					FuncFit  /H=holdStr0  /N=(noUpd) /W=(noProg) /Q NernstNPVOx, cW, datW  /X=theClbW  /C=constrW0 /E=epsilonW //  /D=outW
 					FuncFit  /H=holdStr1  /N=(noUpd) /W=(noProg) /Q NernstNPVOx, cW, datW  /X=theClbW  /C=constrW1 /E=epsilonW   /D=outW
 					FuncFit  /H=holdStr2  /N=(noUpd) /W=(noProg) /Q NernstNPVOx, cW, datW  /X=theClbW  /C=constrW2 /E=epsilonW   /D=outW
