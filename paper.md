@@ -19,7 +19,7 @@ affiliations:
   - name: Department of Chemistry, Michigan State University
     index: 1
 date: 21 July 2019
-bibliography: KinESim.bib
+bibliography: paper.bib
 
 ---
 
