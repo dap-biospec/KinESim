@@ -16,46 +16,26 @@
 
 #pragma IgorVersion=8.0
 
-strconstant cKESVer = "1.6.7a"
-
-
-
-variable sim_points
-variable sim_curr_i;
-variable sim_curr_step;
-variable sim_i_step; // step# in this i
-variable sim_curr_t;
-variable sim_last_update;
-variable sim_start;
+strconstant cKESVer = "1.6.8g"
 
 
 
 constant maxSims=64
 
 constant TWaveLen = 50  
-constant S_C_Offs = 10 // offset of 1st component in the SimWave
-constant S_C_Num = 8 // number of parameters per component
+constant S_C_Offs = 14 // offset of 1st component in the SimWave
+constant S_C_Num = 11 // number of parameters per component
 
-constant  DbgCom =9
+constant  DbgBase =9
+constant  DbgExt =8
 constant  DbgM = 24 
 constant  DbgLen = 150000 
-constant  DoDbg = 1; // on/off flag for debug logging
+//constant  DoDbg = 1; // on/off flag for debug logging
 constant  DoDbgUpdate = 0;
 
 
 
-//-------------------------------------------------------------------
-//
-//
-structure simStatsT
-	variable startTime;
-	variable stopTime;
-	variable runTime;
-	variable steps;
-	variable points;
-	variable flags;
-	variable error;
-endstructure
+
 
 
 //-------------------------------------------------------------------
@@ -63,30 +43,37 @@ endstructure
 //
 structure simDataT
 	string name; // object name of this sim
-	wave PWave
-	wave CWave
-	wave MWave
-	wave /WAVE ERxnsW
-	wave /WAVE GRxnsW;
-	wave RxnsTmp
-	wave LogWave;
+	wave PWave // Simulation parameters wave
+	wave CWave // components wave
+	wave MWave // method parameters wave 
+	wave /WAVE ERxnsW //list of electrochemical reaction waves 
+	wave /WAVE GRxnsW; //list of general reaction waves
+	wave RxnsTmp // internal use
+	wave LogWave; // logging wave reference for debugging, if mode is set to on
+	variable logMode; // logging mode
 
 	variable direction; 	// 0 - no dir
 								// >0 positive, forward
 								// <0 negative, reverse
-	variable index; // position of this sim in the set
-	variable group; // this may be the same as position in the set or may inidicate index of plot etc...
+								
+	variable index; // running order of this sim in the set
+	variable group; // group index, this may be the same as position in the set or may inidicate index of plot etc...
+	
+	
 	// output
-	string text;
-	variable result; 
+	string text; // verbose report to be printed in the history
+	variable result; // optional result 
 
 	// output waves 					
-	wave SWave;
-	wave ProcSWave;
+	wave SWave; // simulation wave containing all components at all points defined by method setup
+	wave ProcSWave; // wave containing results of processing of SWave by a custom user function  
+	variable misc; // flags for hosting function purposes
+	variable stealth; // supress output if fucntion is hosted in multiple interation fit function, for example
+
 endstructure
 
 //-------------------------------------------------------------------
-//
+// a list of simDataT structures of given length
 structure simSetDataArrT
 	variable count;
 	STRUCT simDataT sims[maxSims];
@@ -99,24 +86,24 @@ endstructure
 structure setDataT
 	string name; // object name of this sim
 	string folder; // location of the sub-set
-	wave JParWave
-	wave MWave
-	wave PWave
-	wave CWave
-	wave /WAVE ERxnsW
-	wave /WAVE GRxnsW;
+	wave JParWave // set/kilo/mega numerical parameters wave 
+	wave PWave // Simulation parameters wave
+	wave CWave // components wave
+	wave MWave // method parameters wave 
+	wave /WAVE ERxnsW //list of electrochemical reaction waves 
+	wave /WAVE GRxnsW; //list of general reaction waves
 	
-	wave /T JListWave
+	wave /T JListWave // text job parameters wave
 
-	variable index; // position of this sim in the set
+	variable index; // index of this sim in the set
 
 	// output
-	string text;
-	variable result; 
+	string text; // verbose report to be printed in the history
+	variable result; // optional result 
 endstructure
 
 //-------------------------------------------------------------------
-//
+// a list of setDataT structures of given length
 structure setSetDataArrT
 	variable count;
 	STRUCT setDataT sets[maxSims];
@@ -128,7 +115,6 @@ endstructure
 // This datafield is for internal use by RK4 integrator
 //
 structure simTmpDataT
-	// service waves
 	wave TWave;
 	wave RKWave;
 	wave RKTmpWave; 
@@ -140,45 +126,96 @@ endstructure
 
 //-------------------------------------------------------------------
 //
-structure RKStats
-	variable lim_code_inner;
+structure stepStatsT
+	variable lim_code_inner0;
+	variable lim_rel_inner0;
+	variable lim_code_inner1;
+	variable lim_rel_inner1;
+	variable lim_code_inner2;
+	variable lim_rel_inner2;
+	variable lim_code_inner3;
+	variable lim_rel_inner3;
 	variable lim_code_outer;
 	variable lim_rel_outer;
-	variable lim_rel_inner;
+	
 	variable steps_count;
 	variable rates_count;
-	variable steps_count_cum;
-	variable rates_count_cum;
 	variable counter;
+	variable init_step_t;
+	variable final_step_t;
+	
+	variable holds_count;
+	variable restart_count;
+	variable limit_count;
+	
+	variable doLog;
+	
+	WAVE StatRiseWave;
+	WAVE StatDropWave;
+	WAVE StatStepWave;
+	variable lim_Worst_Cmp;
 endstructure
 
+//-------------------------------------------------------------------
+//
+structure simPointStats
+	variable steps_count;
+	variable rates_count;
+	
+	variable holds_count;
+	variable restart_count;
+	variable limit_count;
+endstructure
 
+//-------------------------------------------------------------------
+//
+//
+structure simStatsT
+	variable startTime;
+	variable stopTime;
+	variable runTime;
+	variable steps;
+	variable points;
+	variable flags;
+	variable error;
+	variable holds_count_cum;
+	variable restart_count_cum;	
+	variable limit_count_cum;	
+	
+endstructure
 
 //-------------------------------------------------------------------
 //
 structure simSetDataT
-	string commName;
-	string text;
-	variable error;
+	string commName; // common name of simulations in this set
+
+	variable error; // report errors occuring during simulations
 	string rootFldr; // where this set was executed
 	string dataFldr; // where subset data are stored
-	variable biDir;
-	
-	wave setValueClb
+	variable biDir; // enable bi-directional simulation
+
+	wave setValueClb // calbration wave for the parameter that is varied in this set
+
 	// ancestor waves, sim entries may modify them
-	wave MWave
-	wave PWave
-	wave CWave
-	wave JParWave
-	wave /WAVE ERxnsW
-	wave /WAVE GRxnsW;
+	wave JParWave // set/kilo/mega numerical parameters wave 
+	wave PWave // Simulation parameters wave
+	wave CWave // components wave
+	wave MWave // method parameters wave 
+	wave /WAVE ERxnsW //list of electrochemical reaction waves 
+	wave /WAVE GRxnsW; //list of general reaction waves
+
+	// output
+	string text; // verbose report to be printed in the history
+	variable result; // optional result 
+	
 endstructure
 
 
 //-------------------------------------------------------------------
 //
 structure simMethodsT
-	variable simNThreads;
+	variable simNThreads; // number of CPU threads to use in the sim,
+								// value can be forced to 1 by the set 
 
 	FUNCREF SimSetupProto prepSimSpecificF; 
 	FUNCREF SimRatesProto theSimRatesF; 
@@ -198,11 +235,13 @@ endstructure
 //
 
 structure setMethodsT
-	string text;
-	string modeName;
-	string offset;
+	string text; // verbose report to be printed in the history 
+	string modeName; // text indicating the mode (simulation, processing, re-assmbly of data) 
+	string offset; // verbose report offset to visualize hierarchy
 	
-	variable setNThreads;
+	variable setNThreads; // number of CPU threads to use in the set,
+								// value >1 forces individual simulations to be done in a single thread
+
 	
 	FUNCREF setInputSetupProto theSetInSetupF;  // jobListW[11];
 	variable doSetInSetup;
@@ -231,22 +270,24 @@ endstructure
 //
 
 structure groupMethodsT
-	string text;
+	string text; // verbose report to be printed in the history
 
 	string theGroupInSetupFN
 	FUNCREF GroupInputSetupProto theGroupInSetupF;  
 	variable doGroupInSetup;
+	
 	string theGroupInAssignFN;
 	FUNCREF GroupInputAssignProto theGroupInAssignF;  
 	variable doGroupInAssign;
 	
-	
 	string theGroupResultSetupFN
 	FUNCREF groupResultSetupProto theGroupResultSetupF; ;
 	variable doGroupOutSetup;
+
 	string theGroupResultAssignFN;
 	FUNCREF GroupResultAssignProto theGroupResultAssignF; 
 	variable doGroupOutAssign;
+
 	string theGroupResultCleanupFN;
 	FUNCREF GroupResultCleanupProto theGroupResultCleanupF; 
 	variable doGroupOutCleanup;
@@ -254,6 +295,7 @@ structure groupMethodsT
 	string theSetPlotSetupFN
 	FUNCREF setPlotSetupProto theGroupPlotSetupF; 
 	variable doGroupPlotBuild;
+
 	string theSetPlotAppendFN;
 	FUNCREF GroupPlotAppendProto theGroupPlotAppendF; 
 	variable doGroupPlotAppend;
@@ -271,6 +313,7 @@ structure SetProgDataT
 	variable  set_points;
 	variable  set_curr_sim_in, set_curr_sim_out;
 	variable  set_curr_i, set_curr_s;
+	variable  set_curr_lim, set_curr_hold, set_curr_restart;
 	variable  set_last_update
 	variable thGroupID;
 	variable hosted;
@@ -327,7 +370,7 @@ endstructure;
 
 //----------------------------------------------------------
 //
-function /S checkSimInput(SWave, CWave, ERxnsW, GRxnsW) 
+threadsafe function /S checkSimInput(SWave, CWave, ERxnsW, GRxnsW) 
 	wave SWave, CWave
 	wave /WAVE ERxnsW, GRxnsW
 
@@ -343,6 +386,40 @@ function /S checkSimInput(SWave, CWave, ERxnsW, GRxnsW)
 
 	redimension /N=(-1, S_C_Offs+cN*S_C_Num ) SWave
 	SWave[][2,] = NaN;
+	
+	SetDimLabel 1, 0, 'time', SWave
+	SetDimLabel 1, 1, 'E', SWave
+	SetDimLabel 1, 2, 'sub-steps', SWave
+	SetDimLabel 1, 3, 'n rates', SWave
+	SetDimLabel 1, 4, 'RK steps', SWave
+	SetDimLabel 1, 5, 'RK overhead', SWave
+	SetDimLabel 1, 6, 'n holds', SWave
+	SetDimLabel 1, 7, 'n restarts', SWave
+	SetDimLabel 1, 8, 'n limits', SWave
+	SetDimLabel 1, 9, 'lim Cmp', SWave
+	SetDimLabel 1, 10, 'lim Rxn', SWave
+	SetDimLabel 1, 11, 'lim RKStep', SWave
+	SetDimLabel 1, 12, 'lim inst', SWave
+	SetDimLabel 1, 13, 'total Q', SWave
+	
+	variable i;
+	for (i=0; i< cN; i++)
+		string CmpName;
+		sprintf CmpName, "Cmp%01u", i
+		SetDimLabel 1, S_C_Offs+i*S_C_Num +  0, $CmpName+"[Ox Sol]", SWave
+		SetDimLabel 1, S_C_Offs+i*S_C_Num +  1, $CmpName+"[Rd Sol]", SWave
+		SetDimLabel 1, S_C_Offs+i*S_C_Num +  2, $CmpName+"[Ox Elc]", SWave
+		SetDimLabel 1, S_C_Offs+i*S_C_Num +  3, $CmpName+"[Rd Elc]", SWave
+		SetDimLabel 1, S_C_Offs+i*S_C_Num +  4, $CmpName+" dC Ox Sol", SWave
+		SetDimLabel 1, S_C_Offs+i*S_C_Num +  5, $CmpName+" dC Rd Sol", SWave
+		SetDimLabel 1, S_C_Offs+i*S_C_Num +  6, $CmpName+" dC Ox Ele", SWave
+		SetDimLabel 1, S_C_Offs+i*S_C_Num +  7, $CmpName+" dC Rd Ele", SWave
+		SetDimLabel 1, S_C_Offs+i*S_C_Num +  8, $CmpName+" lim Rxn", SWave
+		SetDimLabel 1, S_C_Offs+i*S_C_Num +  9, $CmpName+" lim RKStep", SWave
+		SetDimLabel 1, S_C_Offs+i*S_C_Num + 10, $CmpName+" lim number", SWave
+		
+	endfor
+	
 
 	if (!WaveExists(ERxnsW))
 		// return "Rates wave does not exist. Exiting..." 
@@ -593,11 +670,12 @@ end
 //
 // prepare alias wave from alias settings in the CWave
 //
-threadsafe  function /S prepSimAliases(commName, cN,  simTmpData, CWave) 
+threadsafe  function /S prepSimAliases(commName, cN,  simTmpData, CWave, stealth) 
 	string commName
 	variable cN
 	STRUCT simTmpDataT &simTmpData;
 	wave CWave;
+	variable stealth;
 	
 	string result = "";
 	variable i,j,k; 
@@ -861,116 +939,188 @@ threadsafe  function /S prepSimAliases(commName, cN,  simTmpData, CWave)
 	// ..th pass - prep for simulation
 	// trim set to just aliases
 	redimension /N=(nextAliasGroup, longestAlias) simTmpData.AliasW
-	
-	for (	thisCmpState = 0; thisCmpState <=dimSize(simTmpData.AliasW,2); thisCmpState +=1 ) // 0 = oxidized,  1 = reduced
-		for (thisCmpRow=0; thisCmpRow<dimSize(simTmpData.AliasW,0);  thisCmpRow+=1)
-			string thisCmp =  "\rAlias group#"+num2istr(thisCmpRow)+" ";
-			string thisAliases = "";
-			string thisRaw = " (raw "
-			for (j=0; j< dimSize(simTmpData.AliasW,1); j+=1)
-				if (!numtype(simTmpData.AliasW[thisCmpRow][j][thisCmpState]))
-					if (strlen(thisAliases))
-						thisAliases += ", ";
+	if (!stealth)	
+		for (	thisCmpState = 0; thisCmpState <=dimSize(simTmpData.AliasW,2); thisCmpState +=1 ) // 0 = oxidized,  1 = reduced
+			for (thisCmpRow=0; thisCmpRow<dimSize(simTmpData.AliasW,0);  thisCmpRow+=1)
+				string thisCmp =  "\rAlias group#"+num2istr(thisCmpRow)+" ";
+				string thisAliases = "";
+				string thisRaw = " (raw "
+				for (j=0; j< dimSize(simTmpData.AliasW,1); j+=1)
+					if (!numtype(simTmpData.AliasW[thisCmpRow][j][thisCmpState]))
+						if (strlen(thisAliases))
+							thisAliases += ", ";
+						endif
+						if (simTmpData.AliasW[thisCmpRow][j][thisCmpState] >= 0)
+							thisAliases += "+";
+						else
+							thisAliases += "-";
+						endif
+						thisAliases += num2istr(abs(simTmpData.AliasW[thisCmpRow][j][thisCmpState])-1)
 					endif
-					if (simTmpData.AliasW[thisCmpRow][j][thisCmpState] >= 0)
-						thisAliases += "+";
-					else
-						thisAliases += "-";
-					endif
-					thisAliases += num2istr(abs(simTmpData.AliasW[thisCmpRow][j][thisCmpState])-1)
-				endif
-				if (j >0)
-					thisRaw += ",";
-				endif
-				thisRaw +=  num2str(simTmpData.AliasW[thisCmpRow][j][thisCmpState])
-			endfor
-			if (strlen(thisAliases))
-				thisCmp += thisAliases;
-			else
-				thisCmp += " no aliases";
-			endif
-			thisCmp+= thisRaw+")";
-			print thisCmp;
-		endfor 
-	endfor 	
-
-	if (1>2) // for debugging
-		Print " "
-		for (	thisCmpState = 0; thisCmpState <=1; thisCmpState +=1 ) // 0 = oxidized,  1 = reduced
-			Print "Merger points for state ", thisCmpState, " of ", commName
-			for (thisCmpRow=0; thisCmpRow<cN; thisCmpRow+=1)
-				thisCmp =  "Cmp#"+num2istr(thisCmpRow)+" ";
-				thisRaw = " raw "
-				for (j=0; j< cN+1; j+=1)
 					if (j >0)
 						thisRaw += ",";
 					endif
-					thisRaw +=  num2str(MergerW[thisCmpRow][j][thisCmpState])
+					thisRaw +=  num2str(simTmpData.AliasW[thisCmpRow][j][thisCmpState])
 				endfor
-				thisCmp+= thisRaw+"";
+				if (strlen(thisAliases))
+					thisCmp += thisAliases;
+				else
+					thisCmp += " no aliases";
+				endif
+				thisCmp+= thisRaw+")";
 				print thisCmp;
-			endfor
+			endfor 
 		endfor 	
-	endif
-		
+	
+		if (1>2) // for debugging
+			Print " "
+			for (	thisCmpState = 0; thisCmpState <=1; thisCmpState +=1 ) // 0 = oxidized,  1 = reduced
+				Print "Merger points for state ", thisCmpState, " of ", commName
+				for (thisCmpRow=0; thisCmpRow<cN; thisCmpRow+=1)
+					thisCmp =  "Cmp#"+num2istr(thisCmpRow)+" ";
+					thisRaw = " raw "
+					for (j=0; j< cN+1; j+=1)
+						if (j >0)
+							thisRaw += ",";
+						endif
+						thisRaw +=  num2str(MergerW[thisCmpRow][j][thisCmpState])
+					endfor
+					thisCmp+= thisRaw+"";
+					print thisCmp;
+				endfor
+			endfor 	
+		endif
+	endif	
 	return ""
 end
 
 //----------------------------------------------------------
 //
-threadsafe function advanceSim(curr_i, theStats, SWave, TWave)
+threadsafe function advanceSim(curr_i, stepStats, SWave, TWave, PntStats)
 	variable curr_i
-	STRUCT RKStats &theStats;
+	STRUCT stepStatsT &stepStats;
+	STRUCT simPointStats &PntStats;
+
 	wave SWave
 	wave TWave
 	
 	variable i, cN= DimSize(TWave, 1)
-	
-			SWave[curr_i][2] = theStats.counter; 
-			SWave[curr_i][3] = theStats.rates_count_cum;
-			SWave[curr_i][4] = theStats.steps_count_cum; 
-			SWave[curr_i][5] = theStats.rates_count_cum / 4 / theStats.counter; // should define RKOrder;
-			SWave[curr_i][6,9] = NaN;// reserved 
-			theStats.counter  = 0;
-			theStats.rates_count_cum = 0;
-			theStats.steps_count_cum = 0;
-			
-			variable Q_cum_tot = 0;
-			variable dC_cum_Ox_sol =0, dC_cum_Rd_sol =0, dC_cum_Ox_el =0, dC_cum_Rd_el =0
-			for (i=0; i<cN ; i+=1)	// save current component parameters
-				if (TWave[0][i] > 0)
-					SWave[curr_i][S_C_Offs+i*S_C_Num+0] = TWave[1][i]; // Ox_sol
-					SWave[curr_i][S_C_Offs+i*S_C_Num+1] = TWave[4][i] // Rd_sol 
-
-					dC_cum_Ox_sol = TWave[11][i];
-					SWave[curr_i][S_C_Offs+i*S_C_Num+4] = dC_cum_Ox_sol; 
-
-					dC_cum_Rd_sol = TWave[14][i];
-					SWave[curr_i][S_C_Offs+i*S_C_Num+5] = dC_cum_Rd_sol;
-					
-					Q_cum_tot += dC_cum_Ox_sol; 
-					
-					variable C_Ox_el = TWave[2][i]; // Ox_el
-					if (C_Ox_el >= 0)
-						SWave[curr_i][S_C_Offs+i*S_C_Num+2] = C_Ox_el
-						dC_cum_Ox_el = TWave[12][i];
-						SWave[curr_i][S_C_Offs+i*S_C_Num+6] = dC_cum_Ox_el; 
-						Q_cum_tot += dC_cum_Ox_el;
-					endif 
-					
-					variable C_Rd_el = TWave[3][i]; // Rd_el
-					if (C_Rd_el >= 0)
-						SWave[curr_i][S_C_Offs+i*S_C_Num+3] = C_Rd_el
-						dC_cum_Rd_el = TWave[13][i];
-						SWave[curr_i][S_C_Offs+i*S_C_Num+7] = dC_cum_Rd_el
+	// do stats here...
+	if (stepStats.DoLog > 1) 
+		variable rxN = dimsize(stepStats.statRiseWave, 1);
+		variable rkN = dimsize(stepStats.statRiseWave, 2);
+		variable c, r, k;
+		stepStats.statStepWave = 0;
+		for (c = 0; c < cN; c++)
+			for (r = 0; r < rxN; r++)
+				for (k = 0; k < rkN; k++)
+					variable nRise = stepStats.statRiseWave[c][r][k];
+					variable nDrop = stepStats.statDropWave[c][r][k];
+					if (nDrop > 0 && nDrop > nRise)
+						if (stepStats.statStepWave[c][2] < nDrop) // new max
+							stepStats.statStepWave[c][0] = r;
+							stepStats.statStepWave[c][1] = k;
+							stepStats.statStepWave[c][2] = nDrop;
+							stepStats.statStepWave[c][3] = -1;
+						endif 
+					elseif (nRise > 0)
+						if (stepStats.statStepWave[c][2] < nRise) // new max
+							stepStats.statStepWave[c][0] = r;
+							stepStats.statStepWave[c][1] = k;
+							stepStats.statStepWave[c][2] = nRise;
+							stepStats.statStepWave[c][3] = 1;
+						endif 
 					endif
-					 TWave[11,14][i]=0;
-				else // no compound in the system
-					SWave[curr_i][(S_C_Offs+i*S_C_Num+0),(S_C_Offs+i*S_C_Num+7)]=NaN;
-				endif
-			endfor
-			// total charge needs to be divided by the step length
-			SWave[curr_i][8] = Q_cum_tot; // total charge from all sources, this should account for variation in sim step
+				endfor 
+			endfor 
+		endfor
+		variable iMax = 0, dMax = 0;
+		for (c = 0; c < cN; c++)
+			if (stepStats.statStepWave[c][2] > dMax)
+				iMax = c;
+				dMax = stepStats.statStepWave[c][2];
+			endif 
+		endfor
+		if (dMax > 0)
+			stepStats.lim_Worst_Cmp = iMax;
+		else
+			stepStats.lim_Worst_Cmp = -1;
+		endif	
+	endif
+	
+	variable Q_cum_tot = 0;
+	variable dC_cum_Ox_sol =0, dC_cum_Rd_sol =0, dC_cum_Ox_el =0, dC_cum_Rd_el =0
+	for (i=0; i<cN ; i+=1)	// save current component parameters
+		if (TWave[0][i] > 0)
+			SWave[curr_i][S_C_Offs+i*S_C_Num+0] = TWave[1][i]; // Ox_sol
+			SWave[curr_i][S_C_Offs+i*S_C_Num+1] = TWave[4][i] // Rd_sol 
+
+			dC_cum_Ox_sol = TWave[11][i];
+			SWave[curr_i][S_C_Offs+i*S_C_Num+4] = dC_cum_Ox_sol; 
+
+			dC_cum_Rd_sol = TWave[14][i];
+			SWave[curr_i][S_C_Offs+i*S_C_Num+5] = dC_cum_Rd_sol;
+			
+			Q_cum_tot += dC_cum_Ox_sol; 
+			
+			variable C_Ox_el = TWave[2][i]; // Ox_el
+			if (C_Ox_el >= 0)
+				SWave[curr_i][S_C_Offs+i*S_C_Num+2] = C_Ox_el
+				dC_cum_Ox_el = TWave[12][i];
+				SWave[curr_i][S_C_Offs+i*S_C_Num+6] = dC_cum_Ox_el; 
+				Q_cum_tot += dC_cum_Ox_el;
+			endif 
+			
+			variable C_Rd_el = TWave[3][i]; // Rd_el
+			if (C_Rd_el >= 0)
+				SWave[curr_i][S_C_Offs+i*S_C_Num+3] = C_Rd_el
+				dC_cum_Rd_el = TWave[13][i];
+				SWave[curr_i][S_C_Offs+i*S_C_Num+7] = dC_cum_Rd_el
+			endif
+			if ((stepStats.DoLog > 2) && (stepStats.statStepWave[i][2] > 0))
+				SWave[curr_i][S_C_Offs+i*S_C_Num+8] = stepStats.statStepWave[i][0]; // Rxn
+				SWave[curr_i][S_C_Offs+i*S_C_Num+9] = stepStats.statStepWave[i][1]; // RKStep
+				SWave[curr_i][S_C_Offs+i*S_C_Num+10] = stepStats.statStepWave[i][2] * stepStats.statStepWave[i][3]; // number and direction
+			else
+				SWave[curr_i][S_C_Offs+i*S_C_Num+8, S_C_Offs+(i + 1)*S_C_Num -1] = NaN;
+			endif 
+			TWave[11,14][i]=0;
+		else // no compound in the system
+			SWave[curr_i][(S_C_Offs+i*S_C_Num+0),(S_C_Offs+(i+1)*S_C_Num -1)]=NaN;
+		endif
+	endfor
+	
+
+		
+	// total charge needs to be divided by the step length
+	SWave[curr_i][2] = stepStats.counter; 
+	SWave[curr_i][3] = PntStats.rates_count;
+	SWave[curr_i][4] = PntStats.steps_count; 
+	SWave[curr_i][5] = PntStats.rates_count / 4 / stepStats.counter; // should define RKOrder;
+	SWave[curr_i][6] = PntStats.holds_count; 
+	SWave[curr_i][7] = PntStats.restart_count; 
+	SWave[curr_i][8] = PntStats.limit_count; 
+	if ((stepStats.DoLog > 1) && (stepStats.lim_worst_Cmp >= 0))
+		SWave[curr_i][9] = stepStats.lim_worst_Cmp; 
+		SWave[curr_i][10] = stepStats.statStepWave[stepStats.lim_worst_Cmp][0]; // worst reaction
+		SWave[curr_i][11] = stepStats.statStepWave[stepStats.lim_worst_Cmp][1]; // worst RK step
+		SWave[curr_i][12] = stepStats.statStepWave[stepStats.lim_worst_Cmp][2]* stepStats.statStepWave[stepStats.lim_worst_Cmp][3]; // number (+ rise, - drop)
+	else
+		SWave[curr_i][9,12] = NaN;
+	endif
+	SWave[curr_i][13] = Q_cum_tot; // total charge from all sources, this should account for variation in sim step
+	stepStats.counter  = 0;
+	if (stepStats.DoLog > 1)
+		stepStats.statStepWave = 0;
+		stepStats.statRiseWave = 0;
+		stepStats.statDropWave = 0;
+	endif
+	
+	PntStats.rates_count = 0;
+	PntStats.steps_count = 0;
+	PntStats.holds_count = 0;
+	PntStats.restart_count = 0;
+	PntStats.limit_count = 0;
 end
 
 
@@ -1075,52 +1225,57 @@ end
 //---------------------------------------------------------------------------------------
 //
 //
-threadsafe  function reportDbgCommon(dbg, StepsCount, curr_t, curr_i, SimStep, theStats)
+threadsafe  function reportDbgCommon(dbg, StepsCount, curr_t, curr_i, SimStep, stepStats, TWave) 
 	wave dbg;
 	variable StepsCount, curr_t, curr_i, SimStep;
-	STRUCT RKStats &theStats;
-	
-	dbg[StepsCount][0] = curr_t;
-	dbg[StepsCount][1] =curr_i; 
-	dbg[StepsCount][2] = SimStep;
-	dbg[StepsCount][3] = theStats.steps_count; 
-	dbg[StepsCount][4] = theStats.rates_count; 
-	dbg[StepsCount][5] = theStats.lim_code_outer; 
-	dbg[StepsCount][6] = theStats.lim_rel_outer;
-	dbg[StepsCount][7] = theStats.lim_code_inner; 
-	dbg[StepsCount][8] = theStats.lim_rel_inner;
-end
-
-//----------------------------------------------------------
-//
-threadsafe  function reportDbgComponent(dbg, StepsCount,TWave)
-	wave dbg;
-	variable StepsCount;
+	STRUCT stepStatsT &stepStats;
 	wave TWave;
-	variable i;
-	for (i=0; i<dimsize(TWave, 1); i+=1)	
-		variable dbgOffs = DbgCom+i*DbgM;
-		dbg[StepsCount][dbgOffs+0, dbgOffs+2] = TWave[23 + q - (dbgOffs+0)][i]; 
-		dbg[StepsCount][dbgOffs+3] = NaN
-		dbg[StepsCount][dbgOffs+4, dbgOffs+7] = TWave[1 + q - (dbgOffs+4)][i]; 
-		dbg[StepsCount][dbgOffs+8, dbgOffs+11] = TWave[7 + q - (dbgOffs+8)][i]; 
-		dbg[StepsCount][dbgOffs+12, dbgOffs+15] = TWave[11+q - (dbgOffs+12)][i]; 
-		dbg[StepsCount][dbgOffs+15, (DbgCom+(i+1)*DbgM -1)] = NaN; 
-	endfor
+	
+	
+	switch (stepStats.doLog) 
+		case 3:
+			variable i;
+			for (i=0; i<dimsize(TWave, 1); i+=1)	
+				variable dbgOffs = DbgBase + DbgExt+i*DbgM;
+				dbg[StepsCount][dbgOffs+0, dbgOffs+2] = TWave[23 + q - (dbgOffs+0)][i]; 
+				dbg[StepsCount][dbgOffs+3] = NaN
+				dbg[StepsCount][dbgOffs+4, dbgOffs+7] = TWave[1 + q - (dbgOffs+4)][i]; 
+				dbg[StepsCount][dbgOffs+8, dbgOffs+11] = TWave[7 + q - (dbgOffs+8)][i]; 
+				dbg[StepsCount][dbgOffs+12, dbgOffs+15] = TWave[11+q - (dbgOffs+12)][i]; 
+				dbg[StepsCount][dbgOffs+15, (DbgBase + DbgExt+(i+1)*DbgM -1)] = NaN; 
+			endfor
+			
+		case 2:
+			dbg[StepsCount][7] = stepStats.lim_code_outer; 
+			dbg[StepsCount][8] = stepStats.lim_rel_outer;
+			dbg[StepsCount][9] = stepStats.lim_code_inner0; 
+			dbg[StepsCount][10] = stepStats.lim_rel_inner0;
+			dbg[StepsCount][11] = stepStats.lim_code_inner1; 
+			dbg[StepsCount][12] = stepStats.lim_rel_inner1;
+			dbg[StepsCount][13] = stepStats.lim_code_inner2; 
+			dbg[StepsCount][15] = stepStats.lim_rel_inner2;
+			dbg[StepsCount][15] = stepStats.lim_code_inner3; 
+			dbg[StepsCount][16] = stepStats.lim_rel_inner3;
+		case 1:
+			dbg[StepsCount][0] = curr_t;
+			dbg[StepsCount][1] =curr_i; 
+			dbg[StepsCount][2] = stepStats.final_step_t; 
+			dbg[StepsCount][3] = stepStats.init_step_t; 
+			dbg[StepsCount][4] = stepStats.restart_count;
+			dbg[StepsCount][5] = stepStats.steps_count; 
+			dbg[StepsCount][6] = stepStats.rates_count; 
+		case 0:
+	endswitch
 end
-
-
-
-
 
 
 //----------------------------------------------------------
 //      Progress tracking
 //----------------------------------------------------------
 //
-threadsafe function reportProgress(curr_i, curr_t, StepsCount, theStats, reset)
+threadsafe function reportProgress(curr_i, curr_t, StepsCount, stepStats, reset)
 	variable curr_i, curr_t, StepsCount, reset
-	STRUCT RKStats &theStats;
+	STRUCT stepStatsT &stepStats;
 
 	variable /G sim_curr_i = curr_i;
 	variable /G sim_curr_t = curr_t;
@@ -1182,7 +1337,8 @@ function SetProgressSetup(prg)
 	ValDisplay stepDisp, win=$prg.wName,  title="point", pos={25+prg.x,23+prg.y},size={377,14}, bodyWidth=350, limits={0,(prg.set_points < 0? 0 : prg.set_points),0}, barmisc={0,50}, mode=3 
 	ValDisplay stepDisp, win=$prg.wName, value= _NUM:prg.set_curr_i
 	
-	SetVariable ETADisp win=$prg.wName, title="ETA", value=_STR:"-?-", noedit=1, pos={150+prg.x,40+prg.y},fixedSize=1,size={120,16},frame=0
+	SetVariable EstDisp win=$prg.wName, title="Est", value=_STR:"-?-", noedit=1, pos={10+prg.x,40+prg.y},fixedSize=1,size={200,16},frame=0
+	SetVariable ETADisp win=$prg.wName, title="ETA", value=_STR:"-?-", noedit=1, pos={210+prg.x,40+prg.y},fixedSize=1,size={150,16},frame=0
 
 	Button bStop,pos={350+prg.x,45+prg.y},size={50,20},title="Abort", proc=simStopThreadsProc
 	SetActiveSubwindow _endfloat_
@@ -1235,15 +1391,23 @@ function doSetProgressUpdate(prg)
 	variable elapsed_time = (now - prg.set_start_time);
 
 	variable newTime =((prg.set_points - prg.set_curr_i) / prg.set_curr_i)*elapsed_time;
+	variable estTime = (prg.set_points / prg.set_curr_i)*elapsed_time;
+	variable relHold = prg.set_curr_hold / prg.set_curr_s;
+	variable relRestart = prg.set_curr_restart / prg.set_curr_s;
+	variable relLim = prg.set_curr_lim / prg.set_curr_s;
+	
 	string ETAStr = Secs2Time(newTime,5)+" ("+Secs2Time(now+newTime, 0)+")";
+	string EstStr
+	sprintf EstStr "%s, H%.3f R%.3f L%.3f", Secs2Time(estTime,5), relHold, relRestart, relLim ;
 	
 	ValDisplay inSimDisp, win=$prg.wName, value= _NUM:prg.set_curr_sim_in
-
+ 
 	ValDisplay outSimDisp, win=$prg.wName, value= _NUM:prg.set_curr_sim_out
 
 	ValDisplay stepDisp, win=$prg.wName, value= _NUM:prg.set_curr_i
 
 	SetVariable ETADisp  value=_STR:ETAStr, win=$prg.wName
+	SetVariable EstDisp  value=_STR:EstStr, win=$prg.wName
 	NVAR kill_sim
 	prg.aborted = kill_sim;
 	
@@ -1298,19 +1462,22 @@ Function SetProgressCleanup(prg)
 	variable /G set_points
 	variable /G set_curr_i
 	variable /G set_curr_t
+	variable /G set_curr_lim
+	variable /G set_curr_hold
+	variable /G set_curr_restart
 	variable /G set_i_step
 	variable /G set_last_update
 	variable /G set_start
-	killvariables /Z set_points, set_curr_i, set_curr_t, set_curr_step,  set_i_step, set_last_update, set_start, kill_sim 
+	killvariables /Z set_points, set_curr_i, set_curr_t, set_curr_lim, set_curr_hold, set_curr_restart, set_curr_step,  set_i_step, set_last_update, set_start, kill_sim 
 End
 
 //-----------------------------------------------
 //
-function defaultSetPrg(thePrg, hosted, len, wName)
+function defaultSetPrg(thePrg, len, wName) //hosted
 	STRUCT SetProgDataT &thePrg;
-	variable hosted;
 	variable len;
 	string wName; // only if not hosted!
+//	variable hosted;
 
 	thePrg.set_sims = len;
 	thePrg.set_points = 0;
@@ -1318,9 +1485,12 @@ function defaultSetPrg(thePrg, hosted, len, wName)
 	thePrg.set_curr_sim_out = 0;
 	thePrg.set_curr_i = 0;
 	thePrg.set_curr_s = 0;
+	thePrg.set_curr_lim = 0;
+	thePrg.set_curr_hold = 0;
+	thePrg.set_curr_restart = 0;
 	thePrg.thGroupId = -1;
 	thePrg.set_last_update = -1;
-	thePrg.hosted = hosted ? 1: 0;
+	// thePrg.hosted = hosted ? 1: 0; must be pre-set
 	thePrg.aborted = 0;
 	if (!thePrg.hosted)
 		if (strlen(wName)>0)
@@ -1691,44 +1861,109 @@ end
 
 //========================================================================
 //
+structure RKParamsT 
+		variable cN;
+		variable cF
+		variable RKi_drop_max_Sol	
+		variable RKi_rise_max_Sol
+		variable RKi_drop_max_El
+		variable RKi_rise_max_El
+		
+		variable RK_drop_lim_time_X
+		variable RK_rise_lim_time_X
+		variable StepIncrement
+
+		variable RKFull_drop_max_Sol
+		variable RKFull_rise_max_Sol
+		
+		variable RKFull_drop_max_El
+		variable RKFull_rise_max_El
+
+		
+		wave RK4TmpW
+			
+endstructure
+
+//========================================================================
+//
+threadsafe function prepRKParams(params, PWave, RKWave)
+	STRUCT RKParamsT &params;
+	wave PWave, RKWave
+	
+			
+		params.cN=dimsize(RKWave, 2);
+		params.cF= dimsize(RKWave, 0);
+		params.RKi_drop_max_Sol=PWave[5];	
+		params.RKi_rise_max_Sol=PWave[6];	
+		params.RKi_drop_max_El=PWave[11];	
+		params.RKi_rise_max_El=PWave[12];	
+		
+		params.RK_drop_lim_time_X = PWave[17];	
+		params.RK_rise_lim_time_X = PWave[18];	
+		params.StepIncrement = PWave[20];
+
+		string RK4TmpWN = "tmp_RK4"
+		wave params.RK4TmpW = $RK4TmpWN;
+
+
+		params.RKFull_drop_max_Sol =PWave[7];	
+		params.RKFull_rise_max_Sol=PWave[8];	
+		
+		params.RKFull_drop_max_El=PWave[13];	
+		params.RKFull_rise_max_El=PWave[14];	
+
+		params.RK_drop_lim_time_X = PWave[17];	
+		params.RK_rise_lim_time_X = PWave[18];	
+		params.StepIncrement = PWave[20];
+		
+end
+
+
+//========================================================================
 //
 //
-threadsafe function stepRK(RK_Order, RKStep, RKWave, PWave, TWave, simStep, theStats) 
+//
+threadsafe function stepRK(params, RK_Order, RKStep, RKWave, TWave, simStep, stepStats) 
+	STRUCT RKParamsT &params;
 	variable RK_Order, RKStep;
 	
 	wave RKWave
-	wave PWave, TWave
+	wave TWave
 	variable &simStep
-	STRUCT RKStats &theStats;
+	STRUCT stepStatsT &stepStats;
 
 	
 	variable Cref = 0;
 	
 		
-		variable i, j, cN=dimsize(RKWave, 2);
-		variable cF= dimsize(RKWave, 0);
-		variable RKi_drop_max_Sol=PWave[5];	
-		variable RKi_rise_max_Sol=PWave[6];	
-		variable RKi_drop_max_El=PWave[11];	
-		variable RKi_rise_max_El=PWave[12];	
-		
-		variable RK_drop_time_overshot=PWave[16];	
-		variable RK_drop_lim_time_X = PWave[17];	
-		variable RK_rise_lim_time_X = PWave[18];	
+		variable i, j
+//		, cN=dimsize(RKWave, 2);
+//		variable cF= dimsize(RKWave, 0);
+//		variable RKi_drop_max_Sol=PWave[5];	
+//		variable RKi_rise_max_Sol=PWave[6];	
+//		variable RKi_drop_max_El=PWave[11];	
+//		variable RKi_rise_max_El=PWave[12];	
+//		
+//		variable RK_drop_lim_time_X = PWave[17];	
+//		variable RK_rise_lim_time_X = PWave[18];	
+//		variable StepIncrement = PWave[20];
+//
+//		string RK4TmpWN = "tmp_RK4"
+//		wave RK4TmpW = $RK4TmpWN;
 
-		string RK4TmpWN = "tmp_RK4"
-		wave RK4TmpW = $RK4TmpWN;
-
-		variable RK_steps_count;
-		
+//		variable RK_steps_count;
 		do 
 			variable reset  =  0;
 			variable rise_rel_max = 0;
 			variable drop_rel_max = 0;
-			variable max_rise_code = -1;
-			variable max_drop_code = -1;
+			variable rise_rel_ref = 0;
+			variable drop_rel_ref = 0;
+			variable max_rise_Cmp = -1;
+			variable max_drop_Cmp = -1;
+			variable max_rise_Rxn = -1;
+			variable max_drop_Rxn = -1;
 			variable TStep;
-			RK_steps_count += 1;
+			stepStats.steps_count += 1;
 			switch (RKStep)
 				case 0:
 				case 1: 	
@@ -1740,48 +1975,55 @@ threadsafe function stepRK(RK_Order, RKStep, RKWave, PWave, TWave, simStep, theS
 				case 3: 
 			endswitch
 
-			for (i=0; i<cN && reset == 0 ; i+=1)		
+			for (i=0; i<params.cN && reset == 0 ; i+=1)		
 				if (TWave[0][i]  <=  0) // component is NOT present in the solution
 					continue; 
 				endif
-				for (j=0; j < cF; j+=1)
+				for (j=0; j < params.cF; j+=1)
 					variable theC_i = RKWave[j][Cref][i][0] 
 					if (theC_i < 0) // negative initial concentration means there is no need to consider it.
 						continue
 					endif 
-					
 					variable theR_i = RKWave[j][RKStep][i][1];
 					if (theR_i !=0 ) // concentration is changing
 						if (theC_i>0 )  // compund is present, may estimate realtive change
 							variable thedC_rel_i = abs(theR_i * TStep / theC_i);
 							 if (theR_i > 0 ) // rise 
 							 	if (j == 0 || j == 3) // solution 
-									if (thedC_rel_i > RKi_rise_max_Sol)
+									if ((thedC_rel_i > params.RKi_rise_max_Sol) && (thedC_rel_i > rise_rel_max))
 										rise_rel_max = thedC_rel_i;
-										max_rise_code = i*10+j;
+										rise_rel_ref = params.RKi_rise_max_Sol;
+										max_rise_Cmp = i;
+										max_rise_Rxn = j;
 										reset = 1;
 										break; 
 									endif
 							 	else // electrode 
-									if (thedC_rel_i > RKi_rise_max_El)
+									if ((thedC_rel_i > params.RKi_rise_max_El) && (thedC_rel_i > rise_rel_max))
 										rise_rel_max = thedC_rel_i;
-										max_rise_code = i*10+j;
+										rise_rel_ref = params.RKi_rise_max_El;
+										max_rise_Cmp = i;
+										max_rise_Rxn = j;
 										reset = 1;
 										break; 
 									endif
 							 	endif 
 							elseif (theR_i < 0 ) // fall 
 							 	if (j == 0 || j == 3) // solution 
-									if (thedC_rel_i > RKi_drop_max_Sol)
+									if ((thedC_rel_i > params.RKi_drop_max_Sol) && (thedC_rel_i > drop_rel_max))
 										drop_rel_max =thedC_rel_i;
-										max_drop_code = i*10+j;
+										drop_rel_ref = params.RKi_drop_max_Sol;
+										max_drop_Cmp = i;
+										max_drop_Rxn = j;
 										reset = 1;
 										break; 
 									endif
 							 	else // electrode 
-									if (thedC_rel_i > RKi_drop_max_El)
+									if ((thedC_rel_i > params.RKi_drop_max_El) && (thedC_rel_i > drop_rel_max))
 										drop_rel_max =thedC_rel_i;
-										max_drop_code = i*10+j;
+										drop_rel_ref = params.RKi_drop_max_El;
+										max_drop_Cmp = i;
+										max_drop_Rxn = j;
 										reset = 1;
 										break; 
 									endif
@@ -1795,29 +2037,93 @@ threadsafe function stepRK(RK_Order, RKStep, RKWave, PWave, TWave, simStep, theS
 				endfor
 			endfor 
 			
-			if (max_drop_code >= 0)
-				if (RKStep == 0 )
-					SimStep  /= drop_rel_max / (RKi_drop_max_El  * RK_drop_time_overshot); 
+			variable newSimStep 
+			if (max_drop_Cmp >= 0)
+				if (stepStats.limit_count == 0)
+					SimStep  /=  params.StepIncrement; //PWave[20]; //RK4_time_step
 				else
-					SimStep  *= RK_drop_lim_time_X; 
+					if (RKStep == 0 ) 
+						newSimStep = SimStep / (drop_rel_max / drop_rel_ref) ;
+						if (newSimStep < SimStep)
+							SimStep = newSimStep;
+						else
+							SimStep = newSimStep / params.StepIncrement; 
+						endif
+					else
+						SimStep  *= params.RK_drop_lim_time_X; 
+					endif
 				endif
-			elseif (max_rise_code >= 0)
-				if (RKStep == 0)		
-					SimStep /= rise_rel_max / RKi_rise_max_El ;
-				else 
-					SimStep  *= RK_rise_lim_time_X; 
+			elseif (max_rise_Cmp >= 0)
+				if (stepStats.limit_count == 0)
+					SimStep  /=  params.StepIncrement; // PWave[20]; //RK4_time_step
+				else
+					if (RKStep == 3)		
+						newSimStep = SimStep / (rise_rel_max / rise_rel_ref) ;
+						if (newSimStep < SimStep)
+							SimStep = newSimStep;
+						else
+							SimStep = newSimStep / params.StepIncrement; 
+						endif
+					else 
+						SimStep  *= params.RK_rise_lim_time_X; 
+					endif
 				endif
 			endif
 
-			if (max_rise_code >=0 || max_drop_code >=0)
+			if (max_rise_Cmp >=0 || max_drop_Cmp >=0)
 				RKWave[][1,][][] = 0; // reset all previous values except C0 and Euler rates
-//				dbg_up(RK4TmpW, RKWave) ;
 				RKStep = 0; // values of C0_i do not change with iteration! simply restart with smaller step
-
-				theStats.lim_code_inner  = (rise_rel_max > drop_rel_max) ? max_rise_code :  -max_drop_code;
-				theStats.lim_rel_inner =  (rise_rel_max > drop_rel_max) ? rise_rel_max :  -drop_rel_max;				
+				
+				if (stepStats.DoLog > 0)
+					stepStats.limit_count += 1;
+					if (rise_rel_max > drop_rel_max)
+						if (stepStats.DoLog > 1)		
+								stepStats.statRiseWave[max_rise_Cmp][max_rise_Rxn][RKStep] += 1;
+						endif
+						switch (RKStep)
+							case 0: 
+								stepStats.lim_code_inner0  = max_rise_Cmp * 10 + max_rise_Rxn;
+								stepStats.lim_rel_inner0 =  rise_rel_max;
+								break;
+							case 1: 
+								stepStats.lim_code_inner1  = max_rise_Cmp * 10 + max_rise_Rxn;
+								stepStats.lim_rel_inner1 =  rise_rel_max				
+								break;
+							case 2: 
+								stepStats.lim_code_inner2  = max_rise_Cmp * 10 + max_rise_Rxn;
+								stepStats.lim_rel_inner2 =  rise_rel_max			
+								break;
+							case 3: 
+								stepStats.lim_code_inner3  = max_rise_Cmp * 10 + max_rise_Rxn;
+								stepStats.lim_rel_inner3 =  rise_rel_max			
+								break;
+							endswitch
+					else
+						if (stepStats.DoLog > 1)		
+							stepStats.statDropWave[max_drop_Cmp][max_drop_Rxn][RKStep] += 1;
+						endif 					
+						switch (RKStep)
+							case 0: 
+								stepStats.lim_code_inner0  = -(max_drop_Cmp * 10 + max_drop_Rxn);
+								stepStats.lim_rel_inner0 =  -drop_rel_max; 
+								break;
+							case 1: 
+								stepStats.lim_code_inner1  = -(max_drop_Cmp * 10 + max_drop_Rxn);
+								stepStats.lim_rel_inner1 =  -drop_rel_max; 
+								break;
+							case 2: 
+								stepStats.lim_code_inner2  = -(max_drop_Cmp * 10 + max_drop_Rxn);
+								stepStats.lim_rel_inner2 =  -drop_rel_max;
+								break;
+							case 3: 
+								stepStats.lim_code_inner3  = -(max_drop_Cmp * 10 + max_drop_Rxn);
+								stepStats.lim_rel_inner3 = -drop_rel_max;
+								break;
+							endswitch
+					endif
+				endif
 			else
-				return RK_steps_count;
+				return 0;
 			endif 
 		while (1) 
 end
@@ -1825,30 +2131,32 @@ end
 
 //========================================================================
 //
-threadsafe function finishRK(RK_Order, RKWave, PWave, TWave, simStep, theStats) 
+threadsafe function finishRK(params, RK_Order, RKWave, TWave, simStep, stepStats) 
+	STRUCT RKParamsT &params;
 	variable RK_Order
 	wave RKWave
-	wave PWave, TWave
+	wave TWave
 	variable &simStep
-	STRUCT RKStats &theStats;
+	STRUCT stepStatsT &stepStats;
 
 	
 
-		string RK4TmpWN = "tmp_RK4"
-		wave RK4TmpW = $RK4TmpWN;
+//		string RK4TmpWN = "tmp_RK4"
+//		wave RK4TmpW = $RK4TmpWN;
 	
-		variable RKFull_drop_max_Sol =PWave[7];	
-		variable RKFull_rise_max_Sol=PWave[8];	
-		
-		variable RKFull_drop_max_El=PWave[13];	
-		variable RKFull_rise_max_El=PWave[14];	
-		
-		variable RK_drop_lim_time_X = PWave[17];	
-		variable RK_rise_lim_time_X = PWave[18];	
-	
-		variable max_drop_code, max_rise_code, rise_rel_max, 	drop_rel_max ;	
-		variable cN= dimsize(RKWave, 2); // # of components
-		variable cF= dimsize(RKWave, 0); // # of forms for this componnt
+//		variable RKFull_drop_max_Sol =PWave[7];	
+//		variable RKFull_rise_max_Sol=PWave[8];	
+//		
+//		variable RKFull_drop_max_El=PWave[13];	
+//		variable RKFull_rise_max_El=PWave[14];	
+//
+//		variable RK_drop_lim_time_X = PWave[17];	
+//		variable RK_rise_lim_time_X = PWave[18];	
+//		variable StepIncrement = PWave[20];
+//		
+//	
+//		variable cN= dimsize(RKWave, 2); // # of components
+//		variable cF= dimsize(RKWave, 0); // # of forms for this componnt
 
 		variable i, j
 
@@ -1869,40 +2177,58 @@ threadsafe function finishRK(RK_Order, RKWave, PWave, TWave, simStep, theStats)
 		RKWave[][RK_order+0][][0] = SimStep * RKWave[p][RK_order-1][r][1];
 				
 		// final rates are in, check if they comply with the limits
-		rise_rel_max = 0;
-		drop_rel_max = 0;
-		max_rise_code = -1;
-		max_drop_code = -1;
-				
-		for (i=0; i<cN; i+=1)		
+		variable rise_rel_max = 0
+		variable drop_rel_max = 0	
+		variable rise_rel_ref = 0;
+		variable drop_rel_ref = 0;
+		variable max_rise_Cmp = -1;
+		variable max_drop_Cmp = -1;
+		variable max_rise_Rxn = -1;
+		variable max_drop_Rxn = -1;
+
+		variable reset = 0;
+		
+		for (i=0; i<params.cN ; i+=1)		//&& reset == 0
 			if (TWave[0][i]  > 0) // component is present in the solution
-				for (j=0; j < cF; j+=1)
+				for (j=0; j < params.cF ; j+=1)
 					variable theC_i = RKWave[j][0][i][0] //RKWave[j][Cref][i][0] 
 					if (theC_i>0)
 						variable thedC_i = RKWave[j][RK_order][i][0] // RKWave[j][1][i][0];
 						variable thedC_rel_i = abs(thedC_i / theC_i);
 						 if (thedC_i > 0 ) // rise 
 						 	if (j == 0 || j == 3) // solution 
-								if (thedC_rel_i > RKFull_rise_max_Sol)
-									rise_rel_max = thedC_rel_i;
-									max_rise_code = i*10+j;
+								if (thedC_rel_i > params.RKFull_rise_max_Sol)
+									if (thedC_rel_i > rise_rel_max)
+										rise_rel_max = thedC_rel_i;
+										max_rise_Cmp = i;
+										max_rise_Rxn = j;
+									endif
 								endif
 						 	else // electrode 
-								if (thedC_rel_i > RKFull_rise_max_El)
-									rise_rel_max = thedC_rel_i;
-									max_rise_code = i*10+j;
+								if (thedC_rel_i > params.RKFull_rise_max_El) 
+									if (thedC_rel_i > rise_rel_max)
+										rise_rel_max = thedC_rel_i;
+										max_rise_Cmp = i;
+										max_rise_Rxn = j;
+									endif
 								endif
 						 	endif 
 						elseif (thedC_i < 0 ) // fall 
 						 	if (j == 0 || j == 3) // solution 
-								if (thedC_rel_i > RKFull_drop_max_Sol)
-									drop_rel_max = thedC_rel_i;
-									max_drop_code = i*10+j;
+								if (thedC_rel_i > params.RKFull_drop_max_Sol)
+									if (thedC_rel_i > drop_rel_max)
+										drop_rel_max = thedC_rel_i;
+										max_drop_Cmp = i;
+										max_drop_Rxn = j;
+									endif 
 								endif
 						 	else // electrode 
-								if (thedC_rel_i > RKFull_drop_max_El)
-									drop_rel_max = thedC_rel_i;
-									max_drop_code = i*10+j;
+								if (thedC_rel_i > params.RKFull_drop_max_El)
+									if (thedC_rel_i > drop_rel_max)
+										drop_rel_max = thedC_rel_i;
+										max_drop_Cmp = i;
+										max_drop_Rxn = j;
+									endif
 								endif
 						 	endif 
 						endif
@@ -1911,17 +2237,41 @@ threadsafe function finishRK(RK_Order, RKWave, PWave, TWave, simStep, theStats)
 			endif
 		endfor // components, RK order 0
 
-		if (max_drop_code >= 0 )
-			SimStep *= RK_drop_lim_time_X;
-		elseif (max_rise_code >= 0)
-			SimStep *= RK_rise_lim_time_X;				
+		variable newSimStep
+		if (max_drop_Cmp >= 0 )
+			if (stepStats.limit_count == 0)
+				SimStep /= params.StepIncrement;
+			else
+				SimStep *= params.RK_drop_lim_time_X
+			endif 
+		elseif (max_rise_Cmp >= 0)
+			if (stepStats.limit_count == 0)
+				SimStep /= params.StepIncrement;
+			else
+				SimStep *= params.RK_rise_lim_time_X;				
+			endif;
 		endif
 
-		if (max_rise_code >=0 || max_drop_code >=0 )
+		if (max_rise_Cmp >=0 || max_drop_Cmp >=0 )
 			RKWave[][1,][][] = 0; // reset all previous values except C0 and Euler rates
-//			dbg_up(RK4TmpW, RKWave) ;
-			theStats.lim_code_outer = (rise_rel_max > drop_rel_max) ? max_rise_code :  -max_drop_code;
-			theStats.lim_rel_outer = (rise_rel_max > drop_rel_max) ? rise_rel_max :  -drop_rel_max;
+			stepStats.limit_count += 1;
+
+			if (stepStats.DoLog > 0)
+				if (rise_rel_max > drop_rel_max)
+					if (stepStats.DoLog > 1)
+						stepStats.statRiseWave[max_rise_Cmp][max_rise_Rxn][RK_Order] += 1;
+					endif 
+					stepStats.lim_code_outer = max_rise_Cmp * 10 + max_rise_Rxn;
+					stepStats.lim_rel_outer = rise_rel_max;
+				else
+					if (stepStats.DoLog > 1)
+						stepStats.statDropWave[max_drop_Cmp][max_drop_Rxn][RK_Order] += 1;
+					endif 
+					stepStats.lim_code_outer = -(max_drop_Cmp * 10 + max_drop_Rxn);
+					stepStats.lim_rel_outer = -drop_rel_max;
+				endif 
+			endif
+			
 			return 0;
 		else // all good - carry on
 			return 1; 
@@ -1931,41 +2281,135 @@ end
 
 //-----------------------------------------------
 //
-function simSet_FullSimPrl(setData, setEntries, simM, setM, [hostPrg])  
-	STRUCT simSetDataT &setData;
-	STRUCT simSetDataArrT &setEntries;
-	STRUCT simMethodsT &simM;
-	STRUCT setMethodsT &setM;
-	STRUCT SetProgDataT &hostPrg;
+threadsafe function SetStatWaves(logMode, name, CWave, RxRKWave, stepStats)
+	variable logMode; 
+	string name;
+	wave CWave;
+	wave RxRKWave;
+	STRUCT stepStatsT &stepStats	
 
-	variable noHostPrg;
-	if (paramIsDefault(hostPrg)) // no host is supplied
-		STRUCT SetProgDataT locPrg;
-		defaultSetPrg(locPrg, 0, setEntries.count, "")
-		return simSet_FullSimPrlPrg(setData, setEntries, simM, setM, locPrg);
-	else // progress dialog is hosted
-		defaultSetPrg(hostPrg, 1, setEntries.count, "")
-		return simSet_FullSimPrlPrg(setData, setEntries, simM, setM, hostPrg);
-	endif
-end
+	if (logMode > 1)
+		variable cN = dimsize(CWave, 1)
+		variable rxN = dimsize(RxRKWave, 0);
+		variable RKOrder = dimsize(RxRKWave, 1);
+		make /O /N=(cN, rxN, RKOrder  + 1) $name+"_RiseStat", $name+"_DropStat";
+		wave stepStats.StatRiseWave = $name+"_RiseStat";
+		wave stepStats.StatDropWave = $name+"_DropStat";
+		make /O /N=(cN, 4) $name+"_StepStat"
+		wave stepStats.StatStepWave = $name+"_StepStat";
+	else
+		killwaves /Z $name+"_RiseStat", $name+"_DropStat", $name+"_StepStat"
+		wave stepStats.StatRiseWave = NULL;
+		wave stepStats.StatDropWave = NULL;
+		wave stepStats.StatStepWave = NULL;
+	endif 
+	
+end 
+
 
 //-----------------------------------------------
 //
-function simSet_FullSimPrlPrg(setData, setEntries, simM, setM, hostPrg)  
-	STRUCT simSetDataT &setData;
+threadsafe function /WAVE MakeLogWave(logMode, logNameS, cN)
+	variable logMode; 
+	string logNameS;
+	variable cN;
+
+	
+	variable logCols = 0
+	switch (logMode)
+		case 3: 
+			logCols += DbgM * cN;
+		case 2: 
+			logCols += DbgExt;
+		case 1: 
+			logCols += DbgBase;
+		case 0: 
+	endswitch;
+	if (logCols)
+		make /O /N=(DbgLen, logCols) $logNameS +"_log"
+		wave logWave = $logNameS +"_log";
+		logWave = 0;
+print "\nMakeLogWave dims: ", DbgLen, ":", logCols, " for mode ",logMode, " and wave  ", GetWavesDataFolder(logWave,2)
+		return logWave;
+	else
+		return $"";
+	endif
+end 
+
+
+//-----------------------------------------------
+//
+threadsafe function SetLogWave(logwave, logMode, logNameS, cN)
+	wave logWave;
+	variable logMode; 
+	string logNameS;
+	variable cN;
+
+	if (!waveexists(LogWave))
+		return 0;
+	endif
+	
+	variable logCols = 0
+	switch (logMode)
+		case 3: 
+			logCols += DbgM * cN;
+		case 2: 
+			logCols += DbgExt;
+		case 1: 
+			logCols += DbgBase;
+		case 0: 
+	endswitch;
+	if (logCols)
+		redimension /N=(DbgLen, logCols) LogWave
+		LogWave = 0;
+print "\nSetLogWave dims: ", DbgLen, ":", logCols, " for mode ",logMode, " and wave  ", GetWavesDataFolder(logWave,2)
+		return logMode;
+	else
+		redimension /N=(0) LogWave
+		return 0;
+	endif
+end 
+
+
+//-----------------------------------------------
+//
+function SetLogWaveS(simData, RxRKWave, stepStats)
+	STRUCT simDataT &simData;
+	wave RxRKWave;
+	STRUCT stepStatsT &stepStats	
+
+	// wave simData.StatWave	= 
+	SetStatWaves(simData.logMode, simData.name, SimData.CWave, RxRKWave, stepStats);
+	
+	wave simData.LogWave	= MakeLogWave(simData.logMode, simData.name, dimsize(SimData.CWave, 1));
+	if (waveexists(simData.LogWave))
+		return simData.logMode;
+	else
+		return 0;
+	endif;
+end 
+	
+	
+
+//-----------------------------------------------
+//
+function simSet_FullSimPrl(setData, setEntries, simM, setM, prgDlg) 
+	STRUCT simSetDataT &setData; 
 	STRUCT simSetDataArrT &setEntries;
 	STRUCT simMethodsT &simM;
 	STRUCT setMethodsT &setM;
-	STRUCT SetProgDataT &hostPrg;
+	STRUCT SetProgDataT &prgDlg;
 
-
+	defaultSetPrg(prgDlg,  setEntries.count, "")
+	
 	variable i, dummy
 	
 	string StOutWaveN = setData.dataFldr+setData.commName+"_RES";
-	make  /O  /N=(setEntries.count, 10) $StOutWaveN
+	make  /O  /N=(setEntries.count, 13) $StOutWaveN
 	wave  StOWave =  $StOutWaveN;
 	StOWave[][]=NaN;
 	StOWave[][4,5]=0;
+	StOWave[][10,12]=0;
 	
 	// prepare set
 	variable points_total;
@@ -1980,7 +2424,7 @@ function simSet_FullSimPrlPrg(setData, setEntries, simM, setM, hostPrg)
 		if (strlen(result))
 			print result;
 			setData.error = i;
-			return -1;
+			return -104;
 		endif
 		
 		string tmpName = setEntries.sims[i].name + "_Rx"
@@ -1992,14 +2436,14 @@ function simSet_FullSimPrlPrg(setData, setEntries, simM, setM, hostPrg)
 		if (strlen(resStr) > 0)
 			print resStr;
 			setData.error = i;
-			return -1;
+			return -105;
 		endif
 	
 		resStr = appendRxnsTable(setEntries.sims[i].RxnsTmp, setEntries.sims[i].ERxnsW, setEntries.sims[i].CWave, setEntries.sims[i].PWave[2], 1);
 		if (strlen(resStr) > 0)
 			print resStr;
 			setData.error = i;
-			return -1;
+			return -106;
 		endif
 		
 		if (dimsize(setEntries.sims[i].RxnsTmp, 0) <=0)
@@ -2007,104 +2451,112 @@ function simSet_FullSimPrlPrg(setData, setEntries, simM, setM, hostPrg)
 			killwaves /Z theW
 			wave setEntries.sims[i].RxnsTmp = $""
 		endif
-		variable cN = dimsize(setEntries.sims[i].CWave, 1);
-		if (DoDbg)
-			string dbgWN = setEntries.sims[i].name +"_dbg" 
-			if (waveexists($dbgWN))
-	 			redimension /N=(DbgLen, DbgCom + DbgM*cN) $dbgWN
-			else 
-				make /O /N=(DbgLen, DbgCom) $dbgWN
-			endif
-			wave setEntries.sims[i].LogWave = $dbgWN;
-		else
-			wave setEntries.sims[i].LogWave = NULL;
-		endif
+//		setLogWaveS(setEntries.sims[i]);
 	endfor	
 
 	Variable setGroupID= ThreadGroupCreate(setM.setNThreads > 0 ? setM.setNThreads : 1)
-	hostPrg.set_points = points_total;
-	hostPrg.thGroupId = setGroupID;
-	SetProgressStart(hostPrg); 
+	prgDlg.set_points = points_total;
+	prgDlg.thGroupId = setGroupID;
+	SetProgressStart(prgDlg); 
 
 	// perform sim 	
 	variable killFlag = 0;
 	Variable threadGroupStatus;
-	
-	if (simM.doSimWSetup)
-		for (i=0; i<setEntries.count; i+=1) 
-			if (setM.setNThreads > 0)
-				Variable threadIndex;
-				do
-					threadIndex = ThreadGroupWait(setGroupID,-2) - 1
-					if (threadIndex < 0)// Let threads run a while
-						threadGroupStatus=waitForThreadGroup(setGroupID, StOWave, hostPrg, 100)
-						killFlag = doSetProgressUpdate(hostPrg); 
-					endif
-				while (!killFlag &&  threadIndex < 0)
-				if (!killFlag && threadIndex >= 0) // 
-					FUNCREF  SimSetupProto prepF = simM.prepSimSpecificF;
-					FUNCREF SimRatesProto ratesF = simM.theSimRatesF;
-					// parallel set uses sequential integration
-					ThreadStart setGroupID, threadIndex,  Sim_Core_Seq(	setEntries.sims[i].SWave, 	setEntries.sims[i].CWave, setEntries.sims[i].PWave, setEntries.sims[i].ERxnsW, setEntries.sims[i].GRxnsW, setEntries.sims[i].RxnsTmp, prepF, ratesF, StOWave, i, setEntries.sims[i].LogWave) 
-					hostPrg.set_curr_sim_in +=1;
+	try 
+		if (simM.doSimWSetup)
+			for (i=0; i<setEntries.count; i+=1) 
+				if (setM.setNThreads > 0)
+					Variable threadIndex;
+					do
+						threadIndex = ThreadGroupWait(setGroupID,-2) - 1
+						if (threadIndex < 0)// Let threads run a while
+							threadGroupStatus=waitForThreadGroup(setGroupID, StOWave, prgDlg, 100)
+							killFlag = doSetProgressUpdate(prgDlg); 
+						endif
+					while (!killFlag &&  threadIndex < 0)
+					if (!killFlag && threadIndex >= 0) // 
+						FUNCREF  SimSetupProto prepF = simM.prepSimSpecificF;
+						FUNCREF SimRatesProto ratesF = simM.theSimRatesF;
+						// parallel set uses sequential integration
+						ThreadStart setGroupID, threadIndex,  Sim_Core_Seq(	setEntries.sims[i].SWave, 	setEntries.sims[i].CWave, setEntries.sims[i].PWave, setEntries.sims[i].ERxnsW, setEntries.sims[i].GRxnsW, setEntries.sims[i].RxnsTmp, prepF, ratesF, StOWave, i, setEntries.sims[i].LogWave, setEntries.sims[i].logMode) 
+						prgDlg.set_curr_sim_in +=1;
+					else
+						break
+					endif 
 				else
-					break
-				endif 
-			else
-				killFlag = doSetProgressUpdate(hostPrg); 
-				// this needs to be modified to conform to the single sim verions before two methods can be merged
-//				Sim_Core_MT(	setEntries.sims[i].SWave, 	setEntries.sims[i].CWave, setEntries.sims[i].PWave, setEntries.sims[i].ERxnsW, setEntries.sims[i].GRxnsW, setEntries.sims[i].RxnsTmp, prepF, ratesF, StOWave, i, setEntries.sims[i].LogWave) 
-				hostPrg.set_curr_sim_in +=1;			
+					killFlag = doSetProgressUpdate(prgDlg); 
+					// this needs to be modified to conform to the single sim verions before two methods can be merged
+	//				Sim_Core_MT(	setEntries.sims[i].SWave, 	setEntries.sims[i].CWave, setEntries.sims[i].PWave, setEntries.sims[i].ERxnsW, setEntries.sims[i].GRxnsW, setEntries.sims[i].RxnsTmp, prepF, ratesF, StOWave, i, setEntries.sims[i].LogWave) 
+					prgDlg.set_curr_sim_in +=1;			
+				endif
+			endfor
+			if (setM.setNThreads > 1 &&  !killFlag) // wait for completion 
+				do
+					threadGroupStatus=waitForThreadGroup(setGroupID, StOWave, prgDlg, 100)
+					killFlag = doSetProgressUpdate(prgDlg); 
+				while(!killFlag && threadGroupStatus != 0)
 			endif
-		endfor
-		if (setM.setNThreads > 1 &&  !killFlag) // wait for completion 
-			do
-				threadGroupStatus=waitForThreadGroup(setGroupID, StOWave, hostPrg, 100)
-				killFlag = doSetProgressUpdate(hostPrg); 
-			while(!killFlag && threadGroupStatus != 0)
-		endif
-	endif;
-	SetProgressStop(hostPrg)
+		endif;
+		
+		SetProgressStop(prgDlg)
+		
+		// process results
+		variable cpuTime = 0;
+		for (i=0; i<setEntries.count; i+=1) 
+			// retreive sim output
+			string flags = ""
+			string OutStr; 
+			sprintf OutStr, "Simulation time: %0.2f sec for %u points over %u steps (%0.2fus/step); %u holds, %u resets, %u setbacks; Parallel, IntThr=%u; %s", \
+					( StOWave[i][2]), StOWave[i][3], StOWave[i][4], (StOWave[i][2])*1e6 /StOWave[i][3],  StOWave[i][10],  StOWave[i][11],  StOWave[i][12], simM.simNThreads, flags \
 	
-	// process results
-	variable cpuTime = 0;
-	for (i=0; i<setEntries.count; i+=1) 
-		// retreive sim output
-		string flags = ""
-		string OutStr; 
-		sprintf OutStr, "Simulation time: %0.2f sec for %.3g steps (%0.2fus/step) over %u output points; Parallel, IntThr=%u; %s", ( StOWave[i][2]), StOWave[i][3],( StOWave[i][2])*1e6 /StOWave[i][3], StOWave[i][4], simM.simNThreads, flags
-		cpuTime += StOWave[i][2];
-		setEntries.sims[i].text += outStr;
-	
-		 if (simM.doSimWProcess) // continue to process data
-			WAVE setEntries.sims[i].ProcSWave = simM.theSimWProcessF("_i", setEntries.sims[i]) 
-			setEntries.sims[i].text += "=> " + nameofwave(setEntries.sims[i].ProcSWave)
+			cpuTime += StOWave[i][2];
+			setEntries.sims[i].text += outStr;
+		
+			 if (simM.doSimWProcess) // continue to process data
+				WAVE setEntries.sims[i].ProcSWave = simM.theSimWProcessF("_i", setEntries.sims[i]) 
+				setEntries.sims[i].text += "=> " + nameofwave(setEntries.sims[i].ProcSWave)
+			else
+				WAVE setEntries.sims[i].ProcSWave =setEntries.sims[i].SWave; 
+			endif 
+			 
+			 if (setM.doSetOutAssign) // continue to save results
+				setM.theSetResultAssignF(setData, setEntries.sims[i]) 
+			endif 
+			setEntries.sims[i].text = setM.offset + setEntries.sims[i].text
+		endfor	
+		
+		string summaryText;
+		if (setM.setNThreads > 1)
+			sprintf summaryText, "Set real time %0.2f sec for %0.2f sec CPU time; x%0.1f over %g threads", (prgDlg.set_stop_time - prgDlg.set_start_time ), cpuTime, cpuTime/(prgDlg.set_stop_time - prgDlg.set_start_time ), setM.setNThreads
 		else
-			WAVE setEntries.sims[i].ProcSWave =setEntries.sims[i].SWave; 
+			sprintf summaryText, "Set real time %0.2f sec, single thread;"
+		endif; 
+		if (prgDlg.aborted > 0)
+			summaryText += " =Aborted= ";
 		endif 
-		 
-		 if (setM.doSetOutAssign) // continue to save results
-			setM.theSetResultAssignF(setData, setEntries.sims[i]) 
-		endif 
-		setEntries.sims[i].text = setM.offset + setEntries.sims[i].text
-	endfor	
+		setData.text += "\r"+setM.offset+summaryText;
+		if (prgDlg.thGroupId > 0)
+			dummy= ThreadGroupRelease(prgDlg.thGroupId)
+		endif
+		// clean up output waves!
+		killwaves /Z StOWave
+		return 0;
+	catch	// sim failed or killed
+		threadIndex = ThreadGroupRelease	(setGroupID);		
+		SetProgressStop(prgDlg)
+		// clean up output waves!
+		killwaves /Z StOWave
+		switch (V_AbortCode)
+			case -3:
+			case -1:
+				setData.text += "\r = Aborted by user = ";
+				break;
+			default: 
+				setData.text += "\r = Aborted with code "+num2str(V_AbortCode)+" = ";
+		endswitch
+		return V_AbortCode		
+	endtry
 	
-	string summaryText;
-	if (setM.setNThreads > 1)
-		sprintf summaryText, "Set real time %0.2f sec for %0.2f sec CPU time; x%0.1f over %g threads", (hostPrg.set_stop_time - hostPrg.set_start_time ), cpuTime, cpuTime/(hostPrg.set_stop_time - hostPrg.set_start_time ), setM.setNThreads
-	else
-		sprintf summaryText, "Set real time %0.2f sec, single thread;"
-	endif; 
-	if (hostPrg.aborted > 0)
-		summaryText += " =Aborted= ";
-	endif 
-	setData.text += "\r"+setM.offset+summaryText;
-	if (hostPrg.thGroupId > 0)
-		dummy= ThreadGroupRelease(hostPrg.thGroupId)
-	endif
-	
-	// clean up output waves!
-	killwaves /Z StOWave
 end
 
 //-----------------------------------------------
@@ -2124,24 +2576,86 @@ function waitForThreadGroup(groupID, StOWave, hostPrg, wait)
 	variable totalPoints = 0 ;
 	variable completedSteps = 0 ;
 	variable completedPoints = 0;
+	variable completedLims = 0;
+	variable completedHolds = 0;
+	variable completedRestats = 0;
 	for (i=0; i < count; i+=1)
 		completedSims += (StOWave[i][9] > 0 ) ? 1 : 0;
 		totalPoints += StOWave[i][3]; 
 		completedSteps += StOWave[i][4]; 
 		completedPoints += StOWave[i][5]; 
+		completedHolds += StOWave[i][10]; 
+		completedRestats += StOWave[i][11]; 
+		completedLims += StOWave[i][12]; 
 	endfor
 	hostPrg.set_curr_sim_out = completedSims
 	hostPrg.set_curr_sim_in = hostPrg.set_sims - completedSims;
 	hostPrg.set_curr_s = completedSteps
 	hostPrg.set_curr_i = completedPoints
+	hostPrg.set_curr_hold = completedHolds;
+	hostPrg.set_curr_restart = completedRestats;
+	hostPrg.set_curr_lim = completedLims;
+	
 	return threadGroupStatus;
 end
+
+ 
+
+//----------------------------------------------------------
+// 
+threadsafe function SimStats2Wave(stats, OWave, idx)
+	STRUCT simStatsT &stats;
+	wave OWave;
+	variable idx
+
+	OWave[idx][0] = stats.startTime;
+	OWave[idx][1] = stats.stopTime;
+	OWave[idx][2] = stats.runTime;
+	OWave[idx][3] = stats.points;
+	OWave[idx][4] = stats.steps;
+	OWave[idx][5] = stats.points; // all complete here.... stats.compeltePoints;
+//	OWave[idx][6] = ??
+	OWave[idx][7] = stats.flags;
+	OWave[idx][8] = stats.error;
+	OWave[idx][9] = 1; // sim complete
+	OWave[idx][10] = stats.holds_count_cum; 
+	OWave[idx][11] = stats.restart_count_cum;	
+	OWave[idx][12] = stats.limit_count_cum;	
+	
+end
+
+
+//----------------------------------------------------------
+// 
+threadsafe function SimCompleteStep(stepStats, PntStats, stats, tmpData)
+	STRUCT stepStatsT &stepStats;
+	STRUCT simPointStats &PntStats;
+	STRUCT simStatsT &stats;
+	STRUCT simTmpDataT &tmpData;
+
+	// update temp values with the result of sim
+	tmpData.TWave[1,4][] = tmpData.RKWave[p-1][0][q][0] + tmpData.RKWave[p-1][4][q][0];
+	tmpData.TWave[7,10][]  = tmpData.RKWave[p-7][4][q][0]; // calculated rate of change
+	tmpData.TWave[11,14][] += tmpData.RKWave[p-11][4][q][0]; 
+
+	PntStats.steps_count += stepStats.steps_count;
+	PntStats.rates_count += stepStats.rates_count;
+	PntStats.holds_count += stepStats.holds_count;
+	PntStats.restart_count += stepStats.restart_count;
+	PntStats.limit_count += stepStats.limit_count;
+	stats.holds_count_cum += stepStats.holds_count;
+	stats.restart_count_cum +=stepStats.restart_count;
+	stats.limit_count_cum += stepStats.limit_count;	
+
+
+end
+
 
 //----------------------------------------------------------
 // thread safe verison with I/O
 // called by simSet_FullSimPrlPrg
 //
-threadsafe function Sim_Core_Seq(SWave, CWave, PWave, ERxnsW, GRxnsW, RxnsTmp, prepSimSpecificF, theSimRatesF, OWave, idx, LogWave ) 
+threadsafe function Sim_Core_Seq(SWave, CWave, PWave, ERxnsW, GRxnsW, RxnsTmp, prepSimSpecificF, theSimRatesF, OWave, idx, LogWave, logMode ) 
 	wave SWave, CWave, PWave;
 	wave /WAVE GRxnsW, ERxnsW;
 	wave RxnsTmp;
@@ -2150,7 +2664,8 @@ threadsafe function Sim_Core_Seq(SWave, CWave, PWave, ERxnsW, GRxnsW, RxnsTmp, p
 	wave OWave
 	variable idx 
 	wave LogWave
-	
+	variable logMode; 
+ 	
 
 	string commName = nameofwave(SWave);
 	
@@ -2164,7 +2679,7 @@ threadsafe function Sim_Core_Seq(SWave, CWave, PWave, ERxnsW, GRxnsW, RxnsTmp, p
 	if (strlen(result))
 		print result;
 		OWave[idx][8] = 1;
-		return -1;
+		return -101;
 	endif
 	
 	// now call model-specific setup function from template
@@ -2174,50 +2689,48 @@ threadsafe function Sim_Core_Seq(SWave, CWave, PWave, ERxnsW, GRxnsW, RxnsTmp, p
 	if (strlen(result))
 		print result;
 		OWave[idx][8] = 1;
-		return -1;
+		return -102;
 	endif	
 
-	result = prepSimAliases(commName, cN, tmpData, CWave) 
+	result = prepSimAliases(commName, cN, tmpData, CWave, logMode >= 0 ) 
 	if (strlen(result))
 		print result;
 		OWave[idx][8] = 1;
-		return -1;
+		return -103;
 	endif	
 	
-	variable DoDbg = 0;
-	if (waveexists(LogWave))
-	 	redimension /N=(DbgLen, DbgCom + DbgM*cN) LogWave
- 		DoDbg = 1;
-	endif
-	LogWave = 0;
+	STRUCT stepStatsT stepStats;
+	STRUCT simPointStats PntStats;
 	
-		
+	SetStatWaves(logMode, commName, CWave, tmpData.RKSolW, stepStats);
+	stepStats.DoLog = SetLogWave(LogWave, logMode, commName, cN); 
+//	WAVE logWave = SetLogWave(logMode, commName, cN); 
+//	stepStats.DoLog = waveexists(logWave) ? logMode : 0;
+	print "Sim_Core_Seq logMode=", logMode, " passed LogWave is ", GetWavesDataFolder(LogWave, 2)	, " ";
 	// ~~~~~~~~~~~~~~~ simulation prep  ~~~~~~~~~~~~~~~ 
 	variable NPnts =DimSize(SWave,0);
 	variable curr_i = 1; // reference to this or latest output data index
 	variable curr_t = SWave[0][0];
 	variable curr_E = SWave[0][1]; // this value should be calculated from this and next discrete potential considering progress of simulation time
 	variable curr_s = 0;
-
 	
+	
+	
+
 	// group prep must be done before sim is advanced!
 	InitAliasGroup(tmpData.AliasW, tmpData.TWave) 
 	
-	STRUCT RKStats theStats;
-	advanceSim(0, theStats, SWave, tmpData.TWave) // set initial entry 
+	advanceSim(0, stepStats, SWave, tmpData.TWave, PntStats) // set initial entry 
 
-	// check execution time
-	variable startTime = DateTime;
-	OWave[idx][0] = startTime
-	OWave[idx][3] = NPNts
+	STRUCT simStatsT stats;
+	stats.startTime = DateTime;
+	stats.points = NPNts;
 
-	variable SimStep = SWave[1][0]; // attempt to sim to the next step
+	variable lastDesiredStep = SWave[1][0]; // attempt to sim to the next step	
+	variable SimStep = lastDesiredStep; 
+	variable stepHold = 0;
+
 	do
-		DoDbg = DoDbg && (curr_s < DbgLen);
-		if  (curr_s == DbgLen)
-			string dbgcode = "end dbg"
-		endif 
-
 		// interpolate current potential
 		variable next_S_t = SWave[curr_i][0];
 		variable prev_S_t = SWave[curr_i-1][0];
@@ -2225,7 +2738,7 @@ threadsafe function Sim_Core_Seq(SWave, CWave, PWave, ERxnsW, GRxnsW, RxnsTmp, p
 		curr_E = SWave[curr_i-1][1] + (SWave[curr_i][1] - SWave[curr_i-1][1]) * ((curr_t - prev_S_t) / (next_S_t - prev_S_t))
 
 		// do the sim...
-		RK4RatesSeq(PWave, CWave, tmpData.RSolW, tmpData.RKSolW, tmpData.TWave, tmpData.RKWave, curr_E, simStep, next_S_t - curr_t, curr_s, theStats) ;
+		RK4RatesSeq(PWave, CWave, tmpData.RSolW, tmpData.RKSolW, tmpData.TWave, tmpData.RKWave, curr_E, simStep, next_S_t - curr_t, lastDesiredStep, stepHold, curr_s, stepStats) ;
 
 		// check for aliases here; Concentration of all aliases should be the same, rates should be the same
 		tmpData.RKWave[][3][][0] = 0; // flag
@@ -2233,28 +2746,29 @@ threadsafe function Sim_Core_Seq(SWave, CWave, PWave, ERxnsW, GRxnsW, RxnsTmp, p
 		// integrate group data here
 		CombAliasGroup(tmpData.AliasW, tmpData.RKWave) 
 
-		// update temp values with the result of sim
-		tmpData.TWave[1,4][] = tmpData.RKWave[p-1][0][q][0] + tmpData.RKWave[p-1][4][q][0];
-		tmpData.TWave[7,10][]  = tmpData.RKWave[p-7][4][q][0]; // calculated rate of change
-		tmpData.TWave[11,14][] += tmpData.RKWave[p-11][4][q][0]; 
-		// simulation of individual steps is done and saved in tmpData.TWave
+		SimCompleteStep(stepStats, PntStats, stats, tmpData)
 
-		if  (DoDbg)	
-			reportDbgCommon(LogWave, curr_s, curr_t, curr_i, SimStep, theStats);
-			reportDbgComponent(LogWave, curr_s, tmpData.TWave);
+		if  (curr_s < DbgLen)	
+			reportDbgCommon(LogWave, curr_s, curr_t, curr_i, SimStep, stepStats,  tmpData.TWave); 
 		endif
 		
 		curr_t += SimStep; 
 		if (curr_t >= next_S_t) // time to save data
-			advanceSim(curr_i, theStats, SWave, tmpData.TWave);
+			advanceSim(curr_i, stepStats, SWave, tmpData.TWave, PntStats);
 			curr_i +=1;
 		endif 
+
 		
-		reportProgress(curr_i, curr_t, curr_s, theStats, curr_t >= next_S_t ? 1 : 0)
+		reportProgress(curr_i, curr_t, curr_s, stepStats, curr_t >= next_S_t ? 1 : 0)
 		
 		curr_s +=1;
+  		
 		OWave[idx][4] = curr_s; 
 		OWave[idx][5] = curr_i; 
+		OWave[idx][10] = stats.holds_count_cum; 
+		OWave[idx][11] = stats.restart_count_cum;	
+		OWave[idx][12] = stats.limit_count_cum;	
+		
 	while (curr_i< NPnts)
 
 	
@@ -2266,35 +2780,71 @@ threadsafe function Sim_Core_Seq(SWave, CWave, PWave, ERxnsW, GRxnsW, RxnsTmp, p
 	wave TWave = tmpData.TWave
 	killWaves /Z TWave
 
-	variable stopTime = DateTime; 
-	OWave[idx][2] = stopTime - startTime
-	OWave[idx][1] = stopTime;
-	OWave[idx][7] = 0 // not implemented yet stats.flags;
-	OWave[idx][8] = 0 // no error stats.error;
-	OWave[idx][9] = 1 // sim complete
-	
+	stats.stopTime = DateTime;
+	stats.runTime = stats.stopTime - stats.startTime;
+	stats.steps = curr_s;
+
+	SimStats2Wave(stats, OWave, idx)
+
 	if (waveexists(RxnsTmp))
 		RxnsTmp=NaN;
 		RxnsTmp[, dimsize(tmpData.RSolW,0)-1][, dimsize(tmpData.RSolW,1)-1][] = tmpData.RSolW[p][q][r]
 	endif
 end
 
+//--------------------------------------------------------------------------
+//
+threadsafe function resetStepStats(stepStats)
+	STRUCT stepStatsT &stepStats;
+	stepStats.lim_code_inner0 = NaN;
+	stepStats.lim_code_inner1 = NaN;
+	stepStats.lim_code_inner2 = NaN;
+	stepStats.lim_code_inner3 = NaN;
+	stepStats.lim_rel_inner0 = NaN;
+	stepStats.lim_rel_inner1 = NaN;
+	stepStats.lim_rel_inner2 = NaN;
+	stepStats.lim_rel_inner3 = NaN;
+	stepStats.lim_code_outer = NaN;
+	stepStats.lim_rel_outer = NaN;
+	
+	// stepStats.init_step_t  - this is set in calling function
+	// stepStats.final_step_t  - this is set in calling function
+
+	stepStats.steps_count = 0;
+	stepStats.rates_count = 0
+	stepStats.holds_count = 0;
+	stepStats.restart_count = 0;
+	stepStats.limit_count = 0;	
+	
+	// stepStats.doLog - is maintained
+	if (stepStats.doLog > 1)
+		stepStats.StatRiseWave = 0;
+		stepStats.StatDropWave = 0;
+		// stepStats.StatStepWave is fully computed at the end
+		// stepStats.lim_Worst_Cmp is also determined at the end		
+	endif
+	
+	// stepStats.counter is continous
+	
+	
+end
 
 //========================================================================
 // main entry point - single thread only
 // this function must be threadsafe and cannot be replaced by RK4RatesPrl
 //
-threadsafe  function RK4RatesSeq(PWave, CWave, RxInWave, RxRKWave, TWave, RKWave, curr_E, simStep,  maxStep, StepsCount, theStats) 
+
+threadsafe  function RK4RatesSeq(PWave, CWave, RxInWave, RxRKWave, TWave, RKWave, curr_E, simStep,  maxStep, lastDesiredStep, stepHold, StepsCount, stepStats) 
 	// adjusts sim step, all rates are in TWave
 	wave PWave, CWave,  TWave;
 	wave  RKWave; // rows - species, cols - RK4 order, layers - components, chunks - C or R
 	variable curr_E, &simStep;
 	variable maxStep; 
 	variable StepsCount;
-	STRUCT RKStats &theStats;
+	STRUCT stepStatsT &stepStats;
 	wave RxInWave, RxRKWave
-	
-	variable RK_steps_count = 0,  RK_rates_count = 0;
+	variable &lastDesiredStep
+	variable &stepHold
 	
 	variable cN = dimsize(CWave, 1);
 	variable i,j; //, j, k;	
@@ -2311,26 +2861,39 @@ threadsafe  function RK4RatesSeq(PWave, CWave, RxInWave, RxRKWave, TWave, RKWave
 	variable Euler_done = 0;
 
 	// attempt to boost the time
-	simStep *= RK4_time_step;
+	if (stepHold > 0)
+		stepHold -=1;
+		simStep = lastDesiredStep;
+	else
+		simStep = lastDesiredStep * RK4_time_step;
+	endif
+
+	lastDesiredStep = simStep;
 	if (maxStep > 0 && simStep > maxStep)
 		simStep = maxStep;
 	endif 
 	
+	stepStats.init_step_t = simStep;
+	resetStepStats(stepStats);
+	
+	STRUCT RKParamsT params;
+	prepRKParams(params, PWave, RKWave);
 	
 	for (RKStep=0 ; RKStep<4; RKStep+=1)
 		if (RKStep > 0 || !Euler_done)
 			RKCmpRatesST(PWave, CWave, RxInWave, RxRKWave, TWave, RKWave, RKStep) ;
 			Euler_done = 1;
-			RK_rates_count +=1;
+			stepStats.rates_count +=1;
 		endif;
 
 		if (RKStep == RK_Order -1)
-				if (finishRK(RK_Order, RKWave, PWave, TWave, simStep, theStats))
+				if (finishRK(params, RK_Order, RKWave, TWave, simStep, stepStats))
 					continue;
 				endif	// else do it over....
 				RKStep = 0; // values of C0_i do not change with iteration! simply restart with smaller step
+				stepStats.restart_count +=1;
 		endif
-		RK_steps_count += stepRK(RK_Order, RKStep, RKWave, PWave, TWave, simStep,  theStats);
+		stepRK(params, RK_Order, RKStep, RKWave, TWave, simStep,  stepStats);
 	endfor 
 
 	RKWave[][1][][0] =  RKWave[p][0][r][0] + RKWave[p][RK_order][r][0] 
@@ -2345,149 +2908,127 @@ threadsafe  function RK4RatesSeq(PWave, CWave, RxInWave, RxRKWave, TWave, RKWave
 	// RKWave[][RKOrder][i][0] contains dC for this simStep
 	
 	RKPostCmps(RK_order, CWave,  TWave, RKWave) 
-	theStats.steps_count = RK_steps_count;
-	theStats.rates_count = RK_rates_count;
-	theStats.steps_count_cum += RK_steps_count;
-	theStats.rates_count_cum += RK_rates_count;
-	theStats.counter +=1;
+	stepStats.final_Step_t = simStep;
+	stepStats.counter +=1;
+	if (stepStats.final_Step_t < stepStats.init_step_t) // step was reduced
+		lastDesiredStep = 	simStep;
+		stepHold = PWave[16] 
+		stepStats.holds_count +=1;
+	endif 
 end
 
 
 //-----------------------------------------------
 //
-function simSet_FullSimSeq(setData, setEntries, simM, setM, [hostPrg])  
-	STRUCT simSetDataT &setData;
-	STRUCT simSetDataArrT &setEntries;
-	STRUCT simMethodsT &simM;
-	STRUCT setMethodsT &setM;
-	STRUCT SetProgDataT &hostPrg;
-
-	if (paramIsDefault(hostPrg)) // no host is supplied
-		STRUCT SetProgDataT locPrg;
-		defaultSetPrg(locPrg, 0, setEntries.count, "")
-		return simSet_FullSimSeqPrg(setData, setEntries, simM, setM, locPrg);
-	else // progress dialog is hosted
-		defaultSetPrg(hostPrg, 1, setEntries.count, "");
-		return simSet_FullSimSeqPrg(setData, setEntries, simM, setM, hostPrg);
-	endif
-end
-
-//-----------------------------------------------
-//
- function simSet_FullSimSeqPrg(setData, entries, simM, setM, hostPrg)  
+ function simSet_FullSimSeq(setData, entries, simM, setM, prgDlg)  
 	STRUCT simSetDataT &setData;
 	STRUCT simSetDataArrT &entries;
 	STRUCT simMethodsT &simM;
 	STRUCT setMethodsT &setM;
-	STRUCT SetProgDataT &hostPrg;
+	STRUCT SetProgDataT &prgDlg;
 
+	defaultSetPrg(prgDlg, entries.count, "")
+	
 	string StOutWaveN = setData.dataFldr+setData.commName+"_RES";
-	make  /O  /N=(entries.count, 10) $StOutWaveN
+	make  /O  /N=(entries.count, 13) $StOutWaveN
 	wave  StOWave =  $StOutWaveN;
 	StOWave=NaN;
 
 	variable nMT;
 	variable s
 
-	SetProgressStart(hostPrg);
-	for (s=0; s<entries.count; s+=1) 
-		hostPrg.set_curr_sim_in +=1;
-		if (simM.doSimWSetup) 	// prepare wave
-			simM.theSimWSetupF(setData, entries.sims[s]) 
-			// data have been set up, can update progress stats
-			if (hostPrg.set_points == 0)
-				hostPrg.set_points= dimsize(entries.sims[s].SWave, 0)*entries.count;
-				doSetProgressSteps(hostPrg);				
-			endif
+	SetProgressStart(prgDlg);
+	try
+		for (s=0; s<entries.count; s+=1) 
+			prgDlg.set_curr_sim_in +=1;
+			if (simM.doSimWSetup) 	// prepare wave
+				simM.theSimWSetupF(setData, entries.sims[s]) 
+				// data have been set up, can update progress stats
+				if (prgDlg.set_points == 0)
+					prgDlg.set_points= dimsize(entries.sims[s].SWave, 0)*entries.count;
+					doSetProgressSteps(prgDlg);				
+				endif
+				
+				
+				entries.sims[s].text += "=>"+entries.sims[s].name+" ";				
 			
+				string result = checkSimInput(entries.sims[s].SWave, entries.sims[s].CWave, entries.sims[s].ERxnsW, entries.sims[s].GRxnsW) 
+				if (strlen(result))
+					print result;
+					setData.error = s;
+					return -104;
+				endif
 			
-			entries.sims[s].text += "=>"+entries.sims[s].name+" ";				
+				// perform  simulation
+				FUNCREF  SimSetupProto prepF = simM.prepSimSpecificF;
+				FUNCREF SimRatesProto ratesF = simM.theSimRatesF;			 
 		
-			string result = checkSimInput(entries.sims[s].SWave, entries.sims[s].CWave, entries.sims[s].ERxnsW, entries.sims[s].GRxnsW) 
-			if (strlen(result))
-				print result;
-				setData.error = s;
-				return -1;
+				doSetProgressUpdate(prgDlg);
+				// sequential sim uses parallel integration
+			   Sim_Core_Prl(entries.sims[s], prepF, ratesF,  StOWave, s, simM.simNThreads, prgDlg) 
+			   string flags = "" // retreive form stats structure
+				string OutStr; 
+				sprintf OutStr, "Simulation time: %0.2f sec for %u points over %u steps (%0.2fus/step); %u holds, %u resets, %u setbacks; Sequential, IntThr=%u; %s", \
+						StOWave[s][2], StOWave[s][3], StOWave[s][4], (StOWave[s][2])*1e6 /StOWave[s][3],  StOWave[s][10],  StOWave[s][11],  StOWave[s][12], simM.simNThreads, flags
+				
+				entries.sims[s].text += outStr;
+				prgDlg.set_curr_s += StOWave[s][4]; 
+				prgDlg.set_curr_i += StOWave[s][5];
+				prgDlg.set_curr_hold = StOWave[s][10];
+				prgDlg.set_curr_restart = StOWave[s][11];
+				prgDlg.set_curr_lim = StOWave[s][12];
 			endif
-		
-			// perform  simulation
-			FUNCREF  SimSetupProto prepF = simM.prepSimSpecificF;
-			FUNCREF SimRatesProto ratesF = simM.theSimRatesF;			 
+			prgDlg.set_curr_sim_out +=1;
+			doSetProgressUpdate(prgDlg);
+			 
+			 if (simM.doSimWProcess) // continue to process data
+				WAVE entries.sims[s].ProcSWave = simM.theSimWProcessF("_i", entries.sims[s]) 
+				entries.sims[s].text += "=> " + nameofwave(entries.sims[s].ProcSWave)
+			else
+				WAVE entries.sims[s].ProcSWave =entries.sims[s].SWave; 
+			endif 
+			 
+			 if (setM.doSetOutAssign) // continue to save results
+				setM.theSetResultAssignF(setData, entries.sims[s]) 
+			endif 
 	
-			doSetProgressUpdate(hostPrg);
-			// sequential sim uses parallel integration
-		   Sim_Core_PrlW(entries.sims[s], prepF, ratesF,  StOWave, s, simM.simNThreads, hostPrg) 
-		   string flags = "" // retreive form stats structure
-			string OutStr; 
-			sprintf OutStr, "Simulation time: %0.2f sec for %.3g steps (%0.2fus/step) over %u output points; Sequential, IntThr=%u; %s", ( StOWave[s][2]), StOWave[s][3],( StOWave[s][2])*1e6 /StOWave[s][3], StOWave[s][4], simM.simNThreads, flags
-			entries.sims[s].text += outStr;
-			hostPrg.set_curr_s += StOWave[s][4]; 
-			hostPrg.set_curr_i += StOWave[s][5]
-		endif
-		hostPrg.set_curr_sim_out +=1;
-		doSetProgressUpdate(hostPrg);
-		 
-		 if (simM.doSimWProcess) // continue to process data
-			WAVE entries.sims[s].ProcSWave = simM.theSimWProcessF("_i", entries.sims[s]) 
-			entries.sims[s].text += "=> " + nameofwave(entries.sims[s].ProcSWave)
-		else
-			WAVE entries.sims[s].ProcSWave =entries.sims[s].SWave; 
-		endif 
-		 
-		 if (setM.doSetOutAssign) // continue to save results
-			setM.theSetResultAssignF(setData, entries.sims[s]) 
-		endif 
-
-		doSetProgressUpdate(hostPrg);
-		
-	endfor
-	
-	SetProgressStop(hostPrg);
+			doSetProgressUpdate(prgDlg);
+			
+		endfor
+		SetProgressStop(prgDlg);
+		return 0
+	catch	// sim failed or killed
+		SetProgressStop(prgDlg)
+		// clean up output waves!
+		killwaves /Z StOWave
+		switch (V_AbortCode)
+			case -3:
+			case -1:
+				setData.text += "\r = Aborted by user = ";
+				break;
+			default: 
+				setData.text += "\r = Aborted with code "+num2str(V_AbortCode)+" = ";
+		endswitch
+		return V_AbortCode		
+	endtry
 
 	// do not do plotting here!
-end
-
-
-//-----------------------------------------------
-// wrapper for wave style results reporting
-//
-
-function Sim_Core_PrlW(simData, prepSimSpecificF, theSimRatesF, OWave, idx , nMT, hostPrg)
-	 STRUCT simDataT &simData;
-	FUNCREF SimRatesProto theSimRatesF;
-	FUNCREF SimSetupProto prepSimSpecificF;
-	wave OWave;
-	variable idx;
-	variable nMT;
-	STRUCT SetProgDataT &hostPrg;
-
-	STRUCT simStatsT stats;
-	 variable result = Sim_Core_Prl(simData, prepSimSpecificF, theSimRatesF, stats, nMT, hostPrg)
-
-	OWave[idx][0] = stats.startTime;
-	OWave[idx][1] = stats.stopTime;
-	OWave[idx][2] = stats.runTime;
-	OWave[idx][3] = stats.points;
-	OWave[idx][4] = stats.steps;
-	OWave[idx][5] = stats.points; // all complete here.... stats.compeltePoints;
-//	OWave[idx][6] = ??
-	OWave[idx][7] = stats.flags;
-	OWave[idx][8] = stats.error;
-	OWave[idx][9] = 1; // sim complete
-	return result
 end
 
 //-----------------------------------------------
 // worker function using structure for results reporting
 //
- function Sim_Core_Prl(simData, prepSimSpecificF, theSimRatesF, stats, nMT, hostPrg)
+ function Sim_Core_Prl(simData, prepSimSpecificF, theSimRatesF, OWave, idx, nMT, hostPrg)
 	 STRUCT simDataT &simData;
 	FUNCREF SimRatesProto theSimRatesF;
 	FUNCREF SimSetupProto prepSimSpecificF;
-	STRUCT simStatsT &stats;
+	variable idx;
 	variable nMT;
+	wave OWave;
 	STRUCT SetProgDataT &hostPrg;
 	
+//	STRUCT simStatsT &stats;
+	STRUCT simStatsT stats;
 	
 	variable i, cN = dimsize(simData.CWave, 1); // number of mediators in the wave
 
@@ -2497,7 +3038,7 @@ end
 	if (strlen(result))
 		print result;
 		stats.error = 1;
-		return -1;
+		return -101;
 	endif
 
 	// now call model-specific setup function from template
@@ -2507,23 +3048,30 @@ end
 	if (strlen(result))
 		print result;
 		stats.error = 1;
-		return -1;
+		return -102;
 	endif	
 	
 	// this is currently not enabled,see MT version
-	result = prepSimAliases(simData.name, cN, tmpData, simData.CWave) 
+	result = prepSimAliases(simData.name, cN, tmpData, simData.CWave, simData.stealth) 
 	if (strlen(result))
 		print result;
 		stats.error = 1;
-		return -1;
+		return -103;
 	endif	
 
-	variable DoDbg
-	DoDbg = 1;
+	STRUCT stepStatsT stepStats;
+	STRUCT simPointStats PntStats;
 
+	stepStats.DoLog = setLogWaveS(SimData, tmpData.RKSolW, stepStats);
+	
+//	SetStatWaves(logMode, commName, CWave, tmpData.RKSolW, stepStats);
+//	WAVE logWave = setLogWave(logMode, commName, cN); 
+//	stepStats.DoLog = waveexists(logWave) ? logMode : 0;
+	print "Sim_Core_Prl logMode=", SimData.logMode	
+	
 	
 	// ~~~~~~~~~~~~~~~ simulation prep  ~~~~~~~~~~~~~~~ 
-	variable DbgLen; 
+	//variable DbgLen; 
 	variable NPnts =DimSize(simData.SWave,0);
 	variable curr_i = 1; // reference to this or latest output data index
 	variable curr_t = simData.SWave[0][0];
@@ -2535,23 +3083,32 @@ end
 	
 	InitAliasGroup(tmpData.AliasW, tmpData.TWave) 
 	
-	STRUCT RKStats theStats;
-	advanceSim(0, theStats, simData.SWave, tmpData.TWave) // set initial entry 
+	
+	advanceSim(0, stepStats, simData.SWave, tmpData.TWave, PntStats) // set initial entry 
+	// STRUCT simStatsT stats is supplied
+	
+	stats.startTime = DateTime;
+	stats.points = NPNts;
+
+	stats.holds_count_cum = 0;
+	stats.restart_count_cum = 0;
+	stats.limit_count_cum = 0;	 
+
+
+
 
 	// set up multithreading 
 	Variable threadGroupID = (nMT > 1) ? ThreadGroupCreate(nMT) : -1
 	
-	// check execution time
-	variable start_time = DateTime
 
-	variable SimStep = simData.SWave[1][0]; // attempt to sim to the next step	
+
 	variable reportPool = 0;
-	do
-		DbgLen = DoDbg && (curr_s < DbgLen);
-		if  (curr_s == DbgLen)
-			string dbgcode = "end dbg"
-		endif 
+	variable lastDesiredStep = simData.SWave[1][0]; // attempt to sim to the next step	
+	variable SimStep = lastDesiredStep; 
 
+	variable stepHold = 0;
+
+	do
 		// interpolate current potential
 		variable next_S_t = simData.SWave[curr_i][0];
 		variable prev_S_t = simData.SWave[curr_i-1][0];
@@ -2559,43 +3116,43 @@ end
 		curr_E = simData.SWave[curr_i-1][1] + (simData.SWave[curr_i][1] - simData.SWave[curr_i-1][1]) * ((curr_t - prev_S_t) / (next_S_t - prev_S_t))
 
 		// do the sim...
-		RK4RatesPrl(simData.PWave, simData.CWave, tmpData.RSolW, tmpData.RKSolW, tmpData.TWave, tmpData.RKWave, curr_E, simStep, next_S_t - curr_t, curr_s, theStats, threadGroupID) ;
+		RK4RatesPrl(simData.PWave, simData.CWave, tmpData.RSolW, tmpData.RKSolW, tmpData.TWave, tmpData.RKWave, curr_E, simStep, next_S_t - curr_t, lastDesiredStep, stepHold, curr_s, stepStats, threadGroupID) ;
 
 		// sequential method processes group data here
 		CombAliasGroup(tmpData.AliasW, tmpData.RKWave)
 		
-		
-		// update temp values with the result of sim
-		tmpData.TWave[1,4][] = tmpData.RKWave[p-1][0][q][0] + tmpData.RKWave[p-1][4][q][0];
-		tmpData.TWave[7,10][]  = tmpData.RKWave[p-7][4][q][0]; 
-		tmpData.TWave[11,14][] += tmpData.RKWave[p-11][4][q][0]; 
-		// simulation of individual steps is done and saved in tmpData.TWave
+		SimCompleteStep(stepStats, PntStats, stats, tmpData)
 
-		if  (DbgLen)	
-			reportDbgCommon(SimData.LogWave, curr_s, curr_t, curr_i, SimStep, theStats);
-			reportDbgComponent(SimData.LogWave, curr_s, tmpData.TWave);
+		if  (curr_s < DbgLen)	
+			reportDbgCommon(SimData.LogWave, curr_s, curr_t, curr_i, SimStep, stepStats, tmpData.TWave); 
 		endif
 		
 		curr_t += SimStep; 
 		if (curr_t >= next_S_t) // time to save data
-			advanceSim(curr_i, theStats, simData.SWave, tmpData.TWave);
+			advanceSim(curr_i, stepStats, simData.SWave, tmpData.TWave, PntStats);
 			curr_i +=1;
 		endif 
 
-		reportProgress(curr_i, curr_t, curr_s, theStats, curr_t >= next_S_t ? 1 : 0)
+		reportProgress(curr_i, curr_t, curr_s, stepStats, curr_t >= next_S_t ? 1 : 0)
 
 		curr_s +=1;
 		reportPool +=1;
 		if (reportPool >=1000)
-			hostPrg.set_curr_i += reportPool;
+			hostPrg.set_curr_s += reportPool;
+			hostPrg.set_curr_i =curr_i; 
+//			OWave[s][10] = stats.holds_count_cum;
+//			OWave[s][11] = stats.restart_count_cum;
+//			OWave[s][12] = stats.limit_count_cum;
+			
+			hostPrg.set_curr_hold = stats.holds_count_cum;
+			hostPrg.set_curr_restart = stats.restart_count_cum;
+			hostPrg.set_curr_lim = stats.limit_count_cum;
 			doSetProgressUpdate(hostPrg);
 			reportPool = 0;
 		endif
-		
-		
 	while (curr_i< NPnts)
 	
-	Variable dummy= ( threadGroupID >= 0 ) ? ThreadGroupRelease(threadGroupID) : 0;
+	Variable dummyThread= ( threadGroupID >= 0 ) ? ThreadGroupRelease(threadGroupID) : 0;
 	
 	// clean up and report
 	string flags = "";
@@ -2605,16 +3162,15 @@ end
 	wave TWave = tmpData.TWave
 	killWaves /Z TWave
 
-	stats.startTime = start_time
-	stats.runTime = DateTime - start_time
-	stats.stopTime = start_time + stats.runTime
+	stats.stopTime = DateTime
+	stats.runTime = stats.stopTime - stats.startTime;
 	stats.steps = curr_s;
-	stats.points =NPnts
-
+	
 //	if (waveexists(RxnsTmp))
 //		RxnsTmp=NaN;
 //		RxnsTmp[, dimsize(tmpData.RSolW,0)-1][, dimsize(tmpData.RSolW,1)-1][] = tmpData.RSolW[p][q][r]
 //	endif
+	SimStats2Wave(stats, OWave, idx);
 
 end
 
@@ -2623,18 +3179,19 @@ end
 //========================================================================
 // main entry point - single or parallel
 //
-function RK4RatesPrl(PWave, CWave,  RxInWave, RxRKWave, TWave, RKWave, curr_E, simStep,  maxStep, StepsCount, theStats, threadGroupID) // adjusts sim step, all rates are in TWave
+function RK4RatesPrl(PWave, CWave,  RxInWave, RxRKWave, TWave, RKWave, curr_E, simStep,  maxStep, lastDesiredStep, stepHold, StepsCount, stepStats, threadGroupID) // adjusts sim step, all rates are in TWave
 	wave PWave, CWave,  TWave;
 	wave  RKWave; // rows - species, cols - RK4 order, layers - components, chunks - C or R
 	variable curr_E, &simStep;
 	variable maxStep; 
 	variable StepsCount;
-	STRUCT RKStats &theStats;
+	STRUCT stepStatsT &stepStats;
 	variable threadGroupID;
 	wave RxInWave, RxRKWave;
+	variable &lastDesiredStep;
+	variable &stepHold;
 	
 
-	variable RK_steps_count = 0,  RK_rates_count = 0;
 	
 	variable cN = dimsize(CWave, 1);
 	variable i,j; //, j, k;	
@@ -2651,12 +3208,24 @@ function RK4RatesPrl(PWave, CWave,  RxInWave, RxRKWave, TWave, RKWave, curr_E, s
 	variable Euler_done = 0;
 
 	// attempt to boost the time
-	simStep *= RK4_time_step;
+	if (stepHold > 0)
+		stepHold -=1;
+		simStep = lastDesiredStep;
+	else
+		simStep = lastDesiredStep * RK4_time_step;
+	endif
+
+	lastDesiredStep = simStep;
 	if (maxStep > 0 && simStep > maxStep)
 		simStep = maxStep;
 	endif 
-	
-	
+
+	stepStats.init_step_t = simStep;
+	resetStepStats(stepStats);
+
+	STRUCT RKParamsT params;
+	prepRKParams(params, PWave, RKWave);
+		
 	for (RKStep=0 ; RKStep<4; RKStep+=1)
 		if (RKStep > 0 || !Euler_done)
 			if (threadGroupID >= 0)
@@ -2665,16 +3234,17 @@ function RK4RatesPrl(PWave, CWave,  RxInWave, RxRKWave, TWave, RKWave, curr_E, s
 				RKCmpRatesST(PWave, CWave, RxInWave, RxRKWave, TWave, RKWave, RKStep) ;
 			endif 
 			Euler_done = 1;
-			RK_rates_count +=1;
+			stepStats.rates_count +=1;
 		endif;
 
 		if (RKStep == RK_Order -1)
-				if (finishRK(RK_Order, RKWave, PWave, TWave, simStep, theStats))
+				if (finishRK(params, RK_Order, RKWave, TWave, simStep, stepStats))
 					continue;
 				endif	// else do it over....
 				RKStep = 0; // values of C0_i do not change with iteration! simply restart with smaller step
+				stepStats.restart_count +=1;
 		endif
-		RK_steps_count += stepRK(RK_Order, RKStep, RKWave, PWave, TWave, simStep,  theStats);
+		stepRK(params, RK_Order, RKStep, RKWave, TWave, simStep,  stepStats);
 	endfor 
 
 	RKWave[][1][][0] =  RKWave[p][0][r][0] + RKWave[p][RK_order][r][0] 
@@ -2689,11 +3259,14 @@ function RK4RatesPrl(PWave, CWave,  RxInWave, RxRKWave, TWave, RKWave, curr_E, s
 	// RKWave[][RKOrder][i][0] contains dC for this simStep
 	
 	RKPostCmps(RK_order, CWave, TWave, RKWave) 
-	theStats.steps_count = RK_steps_count;
-	theStats.rates_count = RK_rates_count;
-	theStats.steps_count_cum += RK_steps_count;
-	theStats.rates_count_cum += RK_rates_count;
-	theStats.counter +=1;
+
+	stepStats.final_Step_t = simStep;
+	stepStats.counter +=1;
+	if (stepStats.final_Step_t < stepStats.init_step_t) // step was reduced
+		lastDesiredStep = 	simStep;
+		stepHold = PWave[16] 
+		stepStats.holds_count +=1;
+	endif 
 end
 
 
@@ -2743,10 +3316,10 @@ end
 //
 // this function does not return a value 
 
- function simPlotBuildProto(plotNameS, theSim, theSet) 
+ function simPlotBuildProto(plotNameS, SimData, SetData) 
 	string plotNameS // name of the plot/window
-	STRUCT simSetDataT &theSet;
-	STRUCT simDataT &theSim;
+	STRUCT simSetDataT &SetData;
+	STRUCT simDataT &SimData;
 	
 	print "Prototype Plot Build functions called. "
 end
@@ -2864,9 +3437,9 @@ end
 //
 // this function does not return a value
 
-function setResultSetupProto(setData, groupEntries) 
+function setResultSetupProto(setData, setEntries) 
 	STRUCT simSetDataT &setData;
-	STRUCT simSetDataArrT &groupEntries;
+	STRUCT simSetDataArrT &setEntries;
 
 	Print "This is a set setup template function. It should not be called directly. "
 end
@@ -3078,6 +3651,8 @@ function simSetPrepData(jobListW, setData, entries, prefix, [justOne])
 	NewDataFolder /O SimData 
 	SetDataFolder $(setData.dataFldr) 
 	
+	variable doLog = setData.PWave[4];
+	
 	variable i, s;
 	for (i=0, s=0; i<setLen; s+=1, i +=  setData.BiDir ? 0.5 : 1)
 		variable theDir = setData.BiDir *  (floor(i)==i ? 1 : -1); // 0 or integer 
@@ -3111,6 +3686,15 @@ function simSetPrepData(jobListW, setData, entries, prefix, [justOne])
 		wave entries.sims[s].ERxnsW = setData.ERxnsW;
 		wave entries.sims[s].GRxnsW = setData.GRxnsW;
 		wave entries.sims[s].MWave = setData.MWave;
+		if (doLog > 0)
+			make /O /N=(0,0) $thisSimName+"_log";
+			WAVE entries.sims[s].LogWave=$thisSimName+"_log";
+		else
+			WAVE entries.sims[s].LogWave=$"";
+//			entries.sims[s].LogMode = 0;
+		endif
+		entries.sims[s].LogMode = doLog;
+		
 		
 		// is simW already prepared? Save it here...
 		entries.sims[s].direction = theDir;
@@ -3654,135 +4238,155 @@ function Set_MedEChem(jobListW, [prefix, offset, hostPrg, doSingle] )
 	STRUCT simSetDataT setData;
 
 	// prepare data structures
-	STRUCT simSetDataArrT setEntries;
-	simSetPrepData(jobListW, setData, setEntries, prefix, justOne = doSingle); 
-
-	// prepare method strcutures
-	STRUCT simMethodsT simM;
-	STRUCT setMethodsT setM;
-	if (simSet_PrepMethods(setData, jobListW, simM, setM, setData.JParWave[0], offset, prefix,  justOne = doSingle) < 0)
-		return -1; // there was a problem
-	endif
+	try
+		STRUCT simSetDataArrT setEntries;
+		simSetPrepData(jobListW, setData, setEntries, prefix,  justOne = doSingle);
+		
 	
-	variable i, j  
-	for (i=0 ; i<setEntries.count; i+=1)
-		setEntries.sims[i].text = prefix;
-	endfor 
-
-	if (setM.doSetInSetup && !doSingle)
-		string outStr = setM.theSetInSetupF(setData, setEntries) 
-		if (strlen(outStr) >0)
-			setData.text += "\r"+offset+outStr;
-		endif;
-	endif;
-	
-	// duplicate CWave and RWaves
-	for (i=0; i< setEntries.count; i+=1)
-		string tgtSimPath = setData.dataFldr+setEntries.sims[i].name
-		duplicate /O setData.CWave $(tgtSimPath+"C")
-		WAVE setEntries.sims[i].CWave = $(tgtSimPath+"C")
-	endfor
-
-
-	if (setM.doSetInAssign && !doSingle)
-		setM.theSetInAssignF(setData, setEntries) 
-	endif;
-	
-	if (setM.doSetOutSetup && !doSingle)
-		setM.theSetResultSetupF(setData, setEntries) 
-	endif;
-	
-	Variable setSimStartTime = DateTime
-	
-	string thisSimName; 
-	
-	if (setM.setNThreads > 1) // parallel MT sims 
-		if (noPrg)
-			simSet_FullSimPrl(setData, setEntries, simM, setM)
-		else
-			simSet_FullSimPrl(setData, setEntries, simM, setM, hostPrg=hostPrg)
+		// prepare method strcutures
+		STRUCT simMethodsT simM;
+		STRUCT setMethodsT setM;
+		if (simSet_PrepMethods(setData, jobListW, simM, setM, setData.JParWave[0], offset, prefix,  justOne = doSingle) < 0)
+			return -1; // there was a problem
 		endif
-	else // sequential sims 
+		
+		variable i, j  
+		for (i=0 ; i<setEntries.count; i+=1)
+			setEntries.sims[i].text = prefix;
+		endfor 
+	
+		if (setM.doSetInSetup && !doSingle)
+			string outStr = setM.theSetInSetupF(setData, setEntries) 
+			if (strlen(outStr) >0)
+				setData.text += "\r"+offset+outStr;
+			endif;
+		endif;
+		 
+		// duplicate CWave and RWaves
+		for (i=0; i< setEntries.count; i+=1)
+			string tgtSimPath = setData.dataFldr+setEntries.sims[i].name
+			duplicate /O setData.CWave $(tgtSimPath+"C")
+			WAVE setEntries.sims[i].CWave = $(tgtSimPath+"C")
+		endfor
+	 
+	
+		if (setM.doSetInAssign && !doSingle)
+			setM.theSetInAssignF(setData, setEntries) 
+		endif;
+		
+		if (setM.doSetOutSetup && !doSingle)
+			setM.theSetResultSetupF(setData, setEntries) 
+		endif;
+		
+		Variable setSimStartTime = DateTime
+		
+		string thisSimName; 
+		variable result = 0;
+		
 		if (noPrg)
-			simSet_FullSimSeq(setData, setEntries, simM, setM)
+			STRUCT SetProgDataT locPrg;
+			if (setM.setNThreads > 1) // parallel MT sims 
+				result = simSet_FullSimPrl(setData, setEntries, simM, setM, locPrg)
+			else // sequential sims 
+				result = simSet_FullSimSeq(setData, setEntries, simM, setM, locPrg)
+			endif 			
 		else
-			simSet_FullSimSeq(setData, setEntries, simM, setM, hostPrg=hostPrg)
+			hostPrg.hosted = 1;
+			if (setM.setNThreads > 1) // parallel MT sims 
+				result = simSet_FullSimPrl(setData, setEntries, simM, setM, hostPrg)
+			else // sequential sims 
+				result = simSet_FullSimSeq(setData, setEntries, simM, setM, hostPrg)
+			endif 
 		endif 
-	endif 
-
-	// Simulation is done, clean up and process results
-	for (i=setEntries.count; i<99; i+=1) // clean up unused waves //Set_Steps
-		sprintf thisSimName "%s%02d" setData.commName, i
-		string killListS = wavelist(thisSimName+"_*", ";","") 
-		string killNameS;
-		j = 0
-		do
-			killNameS= StringFromList(j,killListS)
-			if( strlen(killNameS) == 0 )
-				break
+	
+		// Simulation is done, clean up and process results
+		for (i=setEntries.count; i<99; i+=1) // clean up unused waves //Set_Steps
+			sprintf thisSimName "%s%02d" setData.commName, i
+			string killListS = wavelist(thisSimName+"_*", ";","") 
+			string killNameS;
+			j = 0
+			do
+				killNameS= StringFromList(j,killListS)
+				if( strlen(killNameS) == 0 )
+					break
+				endif
+				killwaves /Z 	$killNameS;
+				j += 1
+			while (1)	// exit is via break statement
+			// killwaves /Z 	$(thisSimName), $(thisSimName+"_i"), $(thisSimName+"f"), $(thisSimName+"f_i"),$(thisSimName+"r"), $(thisSimName+"r_i")			
+		endfor
+			
+		SetDataFolder $setData.rootFldr
+	
+		variable setSimEndTime = DateTime;
+			
+		// print output
+		if (result >=0) 
+			if (noPrg)
+				print offset, setM.text
+			endif 
+			print setData.text;
+			for (i=0; i < setEntries.count; i+=1)
+				print offset, setEntries.sims[i].text;
+			endfor
+		
+			string BiDirS = "";
+			if (setData.BiDir)
+				BiDirS = "x2 ";
+			endif;
+			
+			Printf "%sTotal time: %0.2fs for %s%d %s", offset , (setSimEndTime - setSimStartTime), BiDirS, setEntries.count, setM.modeName;
+			
+			// Plot the results after simulation is complete
+			// this is non-thread safe operation
+			
+			if (simM.doSimPlotBuild) // individual plots for each sim
+				for (i=0; i < setEntries.count; i+=1)
+					simM.theSimPlotBuildF(setData.commName, setEntries.sims[i], setData) 
+				endfor
 			endif
-			killwaves /Z 	$killNameS;
-			j += 1
-		while (1)	// exit is via break statement
-		// killwaves /Z 	$(thisSimName), $(thisSimName+"_i"), $(thisSimName+"f"), $(thisSimName+"f_i"),$(thisSimName+"r"), $(thisSimName+"r_i")			
-	endfor
 		
-	SetDataFolder $setData.rootFldr
-
-	variable setSimEndTime = DateTime;
+			string gizmoN = prefix+setData.commName+"Set";
+			if (setM.doSetPlotBuild && !doSingle)
+				setM.theSetPlotSetupF(setData, gizmoN); //, MWave,  JParWave, setValueClb);
+			endif
 		
-	// print output
-	if (noPrg)
-		print offset, setM.text
-	endif 
-	print setData.text;
-	for (i=0; i < setEntries.count; i+=1)
-		print offset, setEntries.sims[i].text;
-	endfor
-
-	string BiDirS = "";
-	if (setData.BiDir)
-		BiDirS = "x2 ";
-	endif;
+			if (setM.doSetPlotAppend  && !doSingle)
+				for (i=0; i < setEntries.count; i+=1)
+					setM.theSetPlotAppendF(setData, setEntries, gizmoN, i); 
+				endfor
+			endif 
+		
+			if (setM.doSetOutCleanup && !doSingle)
+				setM.theSetResultCleanupF(setData, setEntries,  setData.rootFldr+setData.commName)
+			endif
+		
+			variable setProcessEndTime = DateTime
+			
+			printf "\r%sProcessing time: %.2f sec", offset, (setProcessEndTime - setSimEndTime);
+		else 
+			print setData.text;
+		endif 
+		printf "\r%s#\r",offset 
 	
-	Printf "%sTotal time: %0.2fs for %s%d %s", offset , (setSimEndTime - setSimStartTime), BiDirS, setEntries.count, setM.modeName;
-	
-	// Plot the results after simulation is complete
-	// this is non-thread safe operation
-	
-	if (simM.doSimPlotBuild) // individual plots for each sim
-		for (i=0; i < setEntries.count; i+=1)
-			simM.theSimPlotBuildF(setData.commName, setEntries.sims[i], setData) 
-		endfor
-	endif
-
-	string gizmoN = prefix+setData.commName+"Set";
-	if (setM.doSetPlotBuild && !doSingle)
-		setM.theSetPlotSetupF(setData, gizmoN); //, MWave,  JParWave, setValueClb);
-	endif
-
-	if (setM.doSetPlotAppend  && !doSingle)
-		for (i=0; i < setEntries.count; i+=1)
-			setM.theSetPlotAppendF(setData, setEntries, gizmoN, i); 
-		endfor
-	endif 
-
-	
-	
+	catch
+		switch (V_AbortCode)
+			endswitch
+		SetDataFolder $setData.rootFldr
+		print " sim aborted";
+		if (noPrg)
+			killwindow /Z mySetProgress
+		else
+			killwindow /Z $hostPrg.wName 
+		endif 
+	endtry	 
+ 	
 	// cleanup C and R waves!
 	for (i=0; i< setEntries.count; i+=1)
 		tgtSimPath = setData.dataFldr+setEntries.sims[i].name
 		killwaves /Z $(tgtSimPath+"P"),   $(tgtSimPath+"ER"), $(tgtSimPath+"GR"), $(tgtSimPath+"M"), $(tgtSimPath+"RK4")
 	endfor
 
-	if (setM.doSetOutCleanup && !doSingle)
-		setM.theSetResultCleanupF(setData, setEntries,  setData.rootFldr+setData.commName)
-	endif
-
-	variable setProcessEndTime = DateTime
-	
-	printf "\r%sProcessing time: %.2f sec", offset, (setProcessEndTime - setSimEndTime);
-	printf "\r%s#\r",offset 
 end
 
 
@@ -4570,6 +5174,7 @@ End
 Menu "Analysis"
 	Submenu "Kin-E-Sim"
 		"Control Panel", /Q, KinESimCtrl ()
+		"Create set", /Q, simCreateMenu();
 		"Copy set", /Q, simCopyMenu();
 		"Stop all threads", /Q, simStopThreads();
 		"Unload", /Q, UnloadKES()
@@ -4600,7 +5205,10 @@ Window KinESimCtrl() : Panel
 	Button InfoButton,fColor=(65535,65535,65535)
 	Button simReload,pos={25,6},size={20,20},proc=simReloadProc,title="\\F'Wingdings 3'P"
 	Button simReload,help={"Read and re-interpret content of the job wave. This overries all other settigns. Same as selecting the same wave job again."}
-	Button makeCtrlTbl,pos={5,31},size={64,19},proc=makeCtrlTableProc,title="ctrl. table"
+	Button makeCtrlTbl,pos={2,31},size={60,19},proc=makeCtrlTableProc,title="ctrl. table"
+	
+	PopupMenu logOpt, pos={65,31}, title="log",proc=LogProc,value="none;min;exp;full"
+	PopupMenu logOpt, help={"Enable and select logging level."}	
 
 	PopupMenu jobListWSelect,pos={50,5},size={167,21},bodyWidth=150,proc=jobListWProc,title="job"
 	PopupMenu jobListWSelect,help={"This is the main job wave, which contains the list of options. This wave is updated when options on this dialog are changed. Manual changes to this wave outside of this panel are not reflected automatically."}
@@ -4610,7 +5218,7 @@ Window KinESimCtrl() : Panel
 	PopupMenu jobParamWSelect,help={"Numeric parameters of the job, including individual, kilo- and mega- sets."}
 	PopupMenu jobParamWSelect,mode=1,popvalue="-",value= #"\"-;\"+wavelist(\"*\", \";\",\"DIMS:1,TEXT:0,WAVE:0\")"
 
-	SetVariable jobFlagsEdit,pos={135,33},size={71,16},bodyWidth=45,proc=setJobFlagsEditProc,title="flags"
+	SetVariable jobFlagsEdit,pos={142,32},size={71,16},bodyWidth=45,proc=setJobFlagsEditProc,title="flags"
 	SetVariable jobFlagsEdit,help={"Miscellenious flags that appy to entire simulaiton."}
 	SetVariable jobFlagsEdit,limits={-inf,inf,0},value= _STR:"-"
 	
@@ -4715,12 +5323,16 @@ Window KinESimCtrl() : Panel
 	SetVariable RKTimeDropX,pos={22,16},size={137,16},bodyWidth=45,proc=simRKTimeDropX,title="mult. on drop limit"
 	SetVariable RKTimeDropX,help={"Reduciton of the simulation step on the population drop limit."}
 	SetVariable RKTimeDropX,limits={0,inf,0},value= _STR:"-"
-	SetVariable RKTimeDropOver,pos={12,35},size={147,16},bodyWidth=45,proc=simRKTimeDropOver,title="rollback on drop"
-	SetVariable RKTimeDropOver,help={"Additional rollback of simulation step on limiting conditions."}
-	SetVariable RKTimeDropOver,limits={0,inf,0},value= _STR:"-"
-	SetVariable RKTimeRiseX,pos={27,54},size={132,16},bodyWidth=45,proc=simRKTimeRiseX,title="mult. on rise limit"
+
+	SetVariable RKTimeRiseX,pos={27,35},size={132,16},bodyWidth=45,proc=simRKTimeRiseX,title="mult. on rise limit"
 	SetVariable RKTimeRiseX,help={"Reduciton of the simulation step on the population rise limit."}
 	SetVariable RKTimeRiseX,limits={0,inf,0},value= _STR:"-"
+
+
+	SetVariable RKTimeDropOver,pos={12,54},size={147,16},bodyWidth=45,proc=simRKTimeDropOver,title="hold on limit"
+	SetVariable RKTimeDropOver,help={"How many steps to hold timing following limit conditions before attemting to advance it."}
+	SetVariable RKTimeDropOver,limits={0,inf,0},value= _STR:"-"
+
 	SetVariable RKTimeNextX,pos={35,73},size={124,16},bodyWidth=45,proc=simRKTimeNextX,title="mult. next step"
 	SetVariable RKTimeNextX,help={"Initial change in the duration of the subsequent step."}
 	SetVariable RKTimeNextX,limits={0,inf,0},value= _STR:"-"
@@ -4772,7 +5384,7 @@ Window KinESimCtrl() : Panel
 	SetVariable intRd,limits={0,inf,0},value= _STR:"-"
 	SetVariable cmpE,pos={354,v},size={62,16},bodyWidth=45,proc=compE0EditProc,title="E0"
 	SetVariable cmpE,help={"Standard reduction potential of this component."}
-	SetVariable cmpE,limits={0,inf,0},value= _STR:"-"
+	SetVariable cmpE,limits={-inf,inf,0},value= _STR:"-"
 	SetVariable cmpN,pos={428,v},size={40,16},bodyWidth=30,proc=compNEditProc,title="n"
 	SetVariable cmpN,help={"The number of electrons required for reduction/oxidation of this component. No electrochemistry (solution or electrode) is considered if it is zero."}
 	SetVariable cmpN,limits={0,inf,0},value= _STR:"-"
@@ -5207,6 +5819,11 @@ Function simPlotBuildFProc(pa) : PopupMenuControl
 	return PopFuncSelect(pa, "jobListWSelect", 9);  
 end 
 
+
+//--------------------------------------------------------------------
+//
+
+
 //----------------------------------------------------------------------------------------------------------------------------------------
 //
 //----------------------------------------------------------------------------------------------------------------------------------------
@@ -5409,7 +6026,7 @@ Function ctrlSetVar2WaveByValue(sva, ctrlName , theRow)
 	return 0
 End
 
-
+ 
 //--------------------------------------------------------------------
 //
 Function ctrlSetVar2Wave2DByValue(sva, ctrlName , theRow, theCol) 
@@ -5786,6 +6403,7 @@ function wave2PopMenuStr(winN, ctrlName, paramW, paramField)
 	variable paramField
 
 	if (waveexists(paramW))
+		PopupMenu  $ctrlName, mode=1, win=$(winN)
 		PopupMenu  $ctrlName, popmatch =  paramW[paramField], win=$(winN)
 	else
 		PopupMenu  $ctrlName, popmatch =  "-none-", win=$(winN)
@@ -6077,24 +6695,44 @@ End
 //
 //--------------------------------------------------------------------
 //
+Function getJobWave(win, jobW)
+		STRING win;
+		wave /T &jobW;
+		ControlInfo /W=$(StringFromList(0,win,"#")) jobListWSelect
+		wave /T jobW = $(S_value);
+		if (waveexists(jobW))
+			return 1;
+		elseif (cmpstr(S_value, "-")!=0)
+			DoAlert /T="Oops!", 0, "The wave ["+S_value+"] is not found. Please check the location and try again."
+			return 0;
+		endif
+end
+
+//--------------------------------------------------------------------
+//
 Function simDoIt(ba) : ButtonControl
 	STRUCT WMButtonAction &ba
 
 	if (ba.eventCode == 2)
-		ControlInfo /W=$(StringFromList(0,ba.win,"#")) jobListWSelect
-		wave jobW = $(S_value);
-		if (waveexists(jobW))
+		wave /T jobW;
+		if (getJobWave(ba.win, jobW))
 			Set_MedEChem(jobW, doSingle = 1)
-		elseif (cmpstr(S_value, "-")!=0)
-			DoAlert /T="Oops!", 0, "The wave ["+S_value+"] is not found. Please check the location and try again."
-		endif
+		endif;
+		
+//		ControlInfo /W=$(StringFromList(0,ba.win,"#")) jobListWSelect
+//		wave jobW = $(S_value);
+//		if (waveexists(jobW))
+//			Set_MedEChem(jobW, doSingle = 1)
+//		elseif (cmpstr(S_value, "-")!=0)
+//			DoAlert /T="Oops!", 0, "The wave ["+S_value+"] is not found. Please check the location and try again."
+//		endif
 	endif
 	return 0
 
-	if (ba.eventCode == 2)
-	DoAlert /T="Oops!" 0, "This feature is not yet available..." 
-	endif
-	return 0
+//	if (ba.eventCode == 2)
+//	DoAlert /T="Oops!" 0, "This feature is not yet available..." 
+//	endif
+//	return 0
 End
 //--------------------------------------------------------------------
 //
@@ -6102,13 +6740,18 @@ Function setDoIt(ba) : ButtonControl
 	STRUCT WMButtonAction &ba
 
 	if (ba.eventCode == 2)
-		ControlInfo /W=$(StringFromList(0,ba.win,"#")) jobListWSelect
-		wave jobW = $(S_value);
-		if (waveexists(jobW))
+		wave /T jobW;
+		if (getJobWave(ba.win, jobW))
 			Set_MedEChem(jobW)
-		elseif (cmpstr(S_value, "-")!=0)
-			DoAlert /T="Oops!", 0, "The wave ["+S_value+"] is not found. Please check the location and try again."
-		endif
+		endif;
+//	
+//		ControlInfo /W=$(StringFromList(0,ba.win,"#")) jobListWSelect
+//		wave jobW = $(S_value);
+//		if (waveexists(jobW))
+//			Set_MedEChem(jobW)
+//		elseif (cmpstr(S_value, "-")!=0)
+//			DoAlert /T="Oops!", 0, "The wave ["+S_value+"] is not found. Please check the location and try again."
+//		endif
 	endif
 	return 0
 End
@@ -6119,13 +6762,18 @@ Function kiloDoIt(ba) : ButtonControl
 	STRUCT WMButtonAction &ba
 
 	if (ba.eventCode == 2)
-		ControlInfo /W=$(StringFromList(0,ba.win,"#")) jobListWSelect
-		wave jobW = $(S_value);
-		if (waveexists(jobW))
-			Kilo_MedEChem05(jobW)
-		elseif (cmpstr(S_value, "-")!=0)
-			DoAlert /T="Oops!", 0, "The wave ["+S_value+"] is not found. Please check the location and try again."
-		endif
+		wave /T jobW;
+		if (getJobWave(ba.win, jobW))
+			Kilo_MedEChem05(jobW);
+		endif;
+	
+//		ControlInfo /W=$(StringFromList(0,ba.win,"#")) jobListWSelect
+//		wave jobW = $(S_value);
+//		if (waveexists(jobW))
+//			Kilo_MedEChem05(jobW)
+//		elseif (cmpstr(S_value, "-")!=0)
+//			DoAlert /T="Oops!", 0, "The wave ["+S_value+"] is not found. Please check the location and try again."
+//		endif
 	endif
 	return 0
 End
@@ -6136,13 +6784,18 @@ Function megaDoIt(ba) : ButtonControl
 	STRUCT WMButtonAction &ba
 
 	if (ba.eventCode == 2)
-		ControlInfo /W=$(StringFromList(0,ba.win,"#")) jobListWSelect
-		wave jobW = $(S_value);
-		if (waveexists(jobW))
-			Mega_MedEChem05(jobW)
-		elseif (cmpstr(S_value, "-")!=0)
-			DoAlert /T="Oops!", 0, "The wave ["+S_value+"] is not found. Please check the location and try again."
-		endif
+		wave /T jobW;
+		if (getJobWave(ba.win, jobW))
+			Mega_MedEChem05(jobW);
+		endif;
+
+//		ControlInfo /W=$(StringFromList(0,ba.win,"#")) jobListWSelect
+//		wave jobW = $(S_value);
+//		if (waveexists(jobW))
+//			Mega_MedEChem05(jobW)
+//		elseif (cmpstr(S_value, "-")!=0)
+//			DoAlert /T="Oops!", 0, "The wave ["+S_value+"] is not found. Please check the location and try again."
+//		endif
 	endif
 	return 0
 End
@@ -6182,6 +6835,9 @@ function simReloadCompParamPanel(wName, compParamW, [setCmpNo])
 	endif
 
 	if (waveexists(compParamW))
+	
+		PopupMenu $"compParamWSelect", popmatch=nameofwave(compParamW), win=$(wName)
+		
 		variable nCmp = dimsize(compParamW,1);
 		string cmpList = "\"";
 		variable i;
@@ -6242,56 +6898,56 @@ end
 
 Function simCopySet(win) 
 	string win;
-			ControlInfo /W=$win $"jobListWSelect"
-			wave /T jobListW= $S_Value;
-			if (!waveexists(jobListW))
-				DoAlert /T="Oops!" 0, "The job wave that you want to copy is not found."
-				return 0;
-			endif 
+	ControlInfo /W=$win $"jobListWSelect"
+	wave /T jobListW= $S_Value;
+	if (!waveexists(jobListW))
+		DoAlert /T="Oops!" 0, "The job wave that you want to copy is not found."
+		return 0;
+	endif 
 
-			String cdfBefore = GetDataFolder(1)		
-			string BrowserCmd = " CreateBrowser prompt=\"Select new folder to copy set to\", showWaves=1, showVars=0, showStrs=0 ";
+	String cdfBefore = GetDataFolder(1)		
+	string BrowserCmd = " CreateBrowser prompt=\"Select new folder to copy set to\", showWaves=1, showVars=0, showStrs=0 ";
 
-			Execute BrowserCmd;
-			String cdfAfter = GetDataFolder(1)	// Save current data folder after.
-			SetDataFolder cdfBefore			// Restore current data folder.
-			SVAR S_BrowserList=S_BrowserList
-			NVAR dlg_Flag=V_Flag
-			if(V_Flag==0)
-				return 0;
-			endif
+	Execute BrowserCmd;
+	String cdfAfter = GetDataFolder(1)	// Save current data folder after.
+	SetDataFolder cdfBefore			// Restore current data folder.
+	SVAR S_BrowserList=S_BrowserList
+	NVAR dlg_Flag=V_Flag
+	if(V_Flag==0)
+		return 0;
+	endif
 
-			// check if folder is the same
-			if (cmpstr(cdfBefore, cdfAfter) == 0)
-				DoAlert /T="Oops!" 0, "Please select target folder other than the source folder."
-				return 0;
-			endif 
-			string jListWName = nameofwave(jobListW);
-			string newName = cdfAfter+jListWName
-			duplicate /O $jListWName $(cdfAfter+jListWName);
+	// check if folder is the same
+	if (cmpstr(cdfBefore, cdfAfter) == 0)
+		DoAlert /T="Oops!" 0, "Please select target folder other than the source folder."
+		return 0;
+	endif 
+	string jListWName = nameofwave(jobListW);
+	string newName = cdfAfter+jListWName
+	duplicate /O $jListWName $(cdfAfter+jListWName);
 
-			string jParamWName = jobListW[1];
-			if (waveexists($jParamWName))
-				duplicate /O $jParamWName $(cdfAfter+jParamWName);
-			endif 
+	string jParamWName = jobListW[1];
+	if (waveexists($jParamWName))
+		duplicate /O $jParamWName $(cdfAfter+jParamWName);
+	endif 
+
+	 string methodWName = jobListW[2];
+	if (waveexists($methodWName))
+		duplicate /O $methodWName $(cdfAfter+methodWName);
+	endif 
+
+	 string esimWName = jobListW[3];
+	if (waveexists($esimWName))
+		duplicate /O $esimWName $(cdfAfter+esimWName);
+	endif 
+
+	 string compWName = jobListW[4];
+	if (waveexists($compWName))
+		duplicate /O $compWName $(cdfAfter+compWName);
+	endif 
 	
-			 string methodWName = jobListW[2];
-			if (waveexists($methodWName))
-				duplicate /O $methodWName $(cdfAfter+methodWName);
-			endif 
-		
-			 string esimWName = jobListW[3];
-			if (waveexists($esimWName))
-				duplicate /O $esimWName $(cdfAfter+esimWName);
-			endif 
-
-			 string compWName = jobListW[4];
-			if (waveexists($compWName))
-				duplicate /O $compWName $(cdfAfter+compWName);
-			endif 
-			
-			copyRxnsSet( jobListW[5], cdfAfter)
-			copyRxnsSet( jobListW[6], cdfAfter)
+	copyRxnsSet( jobListW[5], cdfAfter)
+	copyRxnsSet( jobListW[6], cdfAfter)
 end
 
 
@@ -6319,6 +6975,189 @@ function copyRxnsSet(eRxnsWName, cdfAfter)
 			
 end
 
+
+//--------------------------------------------------------------------
+//
+
+Function simCreateMenu() 
+	simCreateSet("KinESimCtrl")	
+end
+
+//--------------------------------------------------------------------
+//
+
+Function simCreateSet(win) 
+	string win;
+	string jListWName;
+	Prompt jListWName, "Job wave name:"
+	DoPrompt "Create new job set", jListWName
+	
+	ControlInfo /W=$win $"jobListWSelect"
+	wave /T jobListW= $S_Value;
+	if (waveexists(jobListW)) // there is a wave, ensure that we do not override it
+		if (!cmpstr(S_Value, jListWName))
+			DoAlert /T="Oops!" 0, "Job wave with such name alredy exists. Please try again with a unique name."
+			return 0;
+		endif
+	endif 
+
+	make /T /N=36 $jListWName
+	wave /T jobListW= $jListWName;
+	PopupMenu  $"jobListWSelect" win=$win, popmatch=jListWName
+	
+	SetDimLabel 0,0,  $"Sim base name (s)", jobListW
+	SetDimLabel 0,1,  $"Job params (w)", jobListW
+	SetDimLabel 0,2,  $"Method params (w)", jobListW
+	SetDimLabel 0,3,  $"Sim params (w)", jobListW
+	SetDimLabel 0,4,  $"Components (w)", jobListW
+	SetDimLabel 0,5,  $"EChem reactions (w)", jobListW
+	SetDimLabel 0,6,  $"Gen reactions (w)", jobListW
+	SetDimLabel 0,7,  $"Sim w. prep (f)", jobListW
+	SetDimLabel 0,8,  $"Sim w. process (f)", jobListW
+	SetDimLabel 0,9,  $"Sim plot build (f)", jobListW
+	SetDimLabel 0,10, $"---", jobListW
+	SetDimLabel 0,11, $"Set input setup (f)", jobListW
+	SetDimLabel 0,12, $"Set input assign (f)", jobListW
+	SetDimLabel 0,13, $"Set result setup (f)", jobListW
+	SetDimLabel 0,14, $"Set result save (f)", jobListW
+	SetDimLabel 0,15, $"Set cleanup (f)", jobListW
+	SetDimLabel 0,16, $"Set plot setup (f)", jobListW
+	SetDimLabel 0,17, $"Set plot append (f)", jobListW
+	SetDimLabel 0,18, $"---", jobListW
+	SetDimLabel 0,19, $"---", jobListW
+	SetDimLabel 0,20, $"Kilo input setup (f)", jobListW
+	SetDimLabel 0,21, $"Kilo input assign (f)", jobListW
+	SetDimLabel 0,22, $"Kilo result setup (f)", jobListW
+	SetDimLabel 0,23, $"Kilo result save (f)", jobListW
+	SetDimLabel 0,24, $"Kilo cleanup (f)", jobListW
+	SetDimLabel 0,25, $"Kilo plot setup (f)", jobListW
+	SetDimLabel 0,26, $"Kilo plot append (f)", jobListW
+	SetDimLabel 0,27, $"---", jobListW
+	SetDimLabel 0,28, $"---", jobListW
+	SetDimLabel 0,29, $"Mega input setup (f)", jobListW
+	SetDimLabel 0,30, $"Mega input assign (f)", jobListW
+	SetDimLabel 0,31, $"Mega result setup (f)", jobListW
+	SetDimLabel 0,32, $"Mega result save (f)", jobListW
+	SetDimLabel 0,33, $"Mega cleanup (f)", jobListW
+	SetDimLabel 0,34, $"Mega plot setup (f)", jobListW
+	SetDimLabel 0,35, $"Mega plot append (f)", jobListW
+
+	
+	string jParamWName = jListWName+"_JobParams";
+	jobListW[1] = jParamWName;
+	if (!waveexists($jParamWName))
+		make /N=28 $jParamWName;
+		SetDimLabel 0,0,  $"flags", $jParamWName
+		SetDimLabel 0,1,  $"n threads", $jParamWName
+		SetDimLabel 0,2,  $"set from", $jParamWName
+		SetDimLabel 0,3,  $"set to", $jParamWName
+		SetDimLabel 0,4,  $"set steps", $jParamWName
+		SetDimLabel 0,5,  $"---", $jParamWName
+		SetDimLabel 0,6,  $"cmp to vary E0", $jParamWName
+		SetDimLabel 0,7,  $"bi-directional", $jParamWName
+		SetDimLabel 0,8,  $"set plot Comp#", $jParamWName
+		SetDimLabel 0,9,  $"---", $jParamWName
+		SetDimLabel 0,10, $"kilo from", $jParamWName
+		SetDimLabel 0,11, $"kilo to", $jParamWName
+		SetDimLabel 0,12, $"kilo steps", $jParamWName
+		SetDimLabel 0,13, $"---", $jParamWName
+		SetDimLabel 0,14, $"kilo param 1", $jParamWName
+		SetDimLabel 0,15, $"kilo param 2", $jParamWName
+		SetDimLabel 0,16, $"kilo flags", $jParamWName
+		SetDimLabel 0,17, $"---", $jParamWName
+		SetDimLabel 0,18, $"---", $jParamWName
+		SetDimLabel 0,19, $"mega from", $jParamWName
+		SetDimLabel 0,20, $"mega to", $jParamWName
+		SetDimLabel 0,21, $"mega steps", $jParamWName
+		SetDimLabel 0,22, $"---", $jParamWName
+		SetDimLabel 0,23, $"mega param 1", $jParamWName
+		SetDimLabel 0,24, $"mega param 2", $jParamWName
+		SetDimLabel 0,25, $"mega flags", $jParamWName
+		SetDimLabel 0,26, $"---", $jParamWName
+		SetDimLabel 0,27, $"---", $jParamWName
+	endif 
+
+	string methodWName = jListWName+"_MethodParams";
+	jobListW[2] = methodWName;
+	if (!waveexists($methodWName))
+		make /N=1 $methodWName 
+		SetDimLabel 0,0,  $"name as needed", $methodWName
+	endif 
+
+	string esimWName = jListWName+"_ESimParams";
+	jobListW[3] = esimWName;
+	if (!waveexists($esimWName))
+		make /N=21 $esimWName 
+		SetDimLabel 0,0,  $"n threads", $esimWName
+		SetDimLabel 0,1,  $"bi-directional", $esimWName
+		SetDimLabel 0,2,  $"rate mode", $esimWName
+		SetDimLabel 0,3,  $"lim rate mode", $esimWName
+		SetDimLabel 0,4,  $"log mode", $esimWName
+		SetDimLabel 0,5,  $"RKi drop max Sol", $esimWName
+		SetDimLabel 0,6,  $"RKi rise max Sol", $esimWName
+		SetDimLabel 0,7,  $"RKFull drop max Sol", $esimWName
+		SetDimLabel 0,8,  $"RKFull rise max Sol", $esimWName
+		SetDimLabel 0,9,  $"---", $esimWName
+		SetDimLabel 0,10, $"layer thickness", $esimWName
+		SetDimLabel 0,11, $"RKi drop max El", $esimWName
+		SetDimLabel 0,12, $"RKi rise max El", $esimWName
+		SetDimLabel 0,13, $"RKFull drop max El", $esimWName
+		SetDimLabel 0,14, $"RKFull rise max El", $esimWName
+		SetDimLabel 0,15, $"---", $esimWName
+		SetDimLabel 0,16, $"RK hold on limit", $esimWName
+		SetDimLabel 0,17, $"RK drop lim time X", $esimWName
+		SetDimLabel 0,18, $"RK rise lim time X", $esimWName
+		SetDimLabel 0,19, $"---", $esimWName
+		SetDimLabel 0,20, $"RK4 next step X", $esimWName
+	endif 
+
+	string compWName = jListWName+"_Components";
+	jobListW[4] = compWName;
+	if (!waveexists($compWName))
+		make /N=(15,1) $compWName 
+		SetDimLabel 0,0,  $"init [Cox]", $compWName
+		SetDimLabel 0,1,  $"init [Crd]", $compWName
+		SetDimLabel 0,2,  $"E0", $compWName
+		SetDimLabel 0,3,  $"n", $compWName
+		SetDimLabel 0,4,  $"electr. k0", $compWName
+		SetDimLabel 0,5,  $"alpha", $compWName
+		SetDimLabel 0,6,  $"flags", $compWName
+		SetDimLabel 0,7,  $"---", $compWName
+		SetDimLabel 0,8,  $"el. max rate", $compWName
+		SetDimLabel 0,9,  $"---", $compWName
+		SetDimLabel 0,10, $"binding K", $compWName
+		SetDimLabel 0,11, $"on rate", $compWName
+		SetDimLabel 0,12, $"---", $compWName
+		SetDimLabel 0,13, $"alias", $compWName
+		SetDimLabel 0,14, $"---", $compWName
+	endif 
+
+	string eRxnsWName = jListWName+"_ERxns";
+	jobListW[5] = eRxnsWName;
+	if (!waveexists($eRxnsWName))
+		make /WAVE /N=1 $eRxnsWName 
+		wave /WAVE ERxns = $eRxnsWName;
+		if (!waveexists($eRxnsWName+"_TD"))
+			make /N=(0,2) $eRxnsWName+"_TD"
+		endif
+		
+		ERxns[0] = $eRxnsWName+"_TD" 
+	endif 	
+
+	string gRxnsWName = jListWName+"_GRxns";
+	jobListW[6] = gRxnsWName;
+	if (!waveexists($gRxnsWName))
+		make /WAVE /N=1 $gRxnsWName 
+		wave /WAVE GRxns = $gRxnsWName;
+		if (!waveexists($gRxnsWName+"_TD"))
+			make /N=(0,2) $gRxnsWName+"_TD"
+		endif
+		GRxns[0] = $gRxnsWName+"_TD" 
+	endif 	
+	simReloadJob(win, jobListW)
+end
+
+
 //--------------------------------------------------------------------
 //
 Function simStopThreadsProc(ba) : ButtonControl
@@ -6326,6 +7165,7 @@ Function simStopThreadsProc(ba) : ButtonControl
 
 	switch( ba.eventCode )
 		case 2: // mouse up
+			Abort
 			break
 		case -1: // control being killed
 			break
@@ -7465,3 +8305,26 @@ end
 
 
 
+
+
+Function LogProc(pa) : PopupMenuControl
+	STRUCT WMPopupAction &pa
+
+	switch( pa.eventCode )
+		case 2: // mouse up
+			Variable popNum = pa.popNum
+			String popStr = pa.popStr
+			wave /T jobW;
+			if (getJobWave(pa.win, jobW))
+				//wave PSet_MedEChem(jobW, doSingle = 1)
+				wave PWave = $jobW[3];
+				PWave[4] = popNum -1;
+			endif;
+
+			break
+		case -1: // control being killed
+			break
+	endswitch
+
+	return 0
+End
