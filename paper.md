@@ -1,5 +1,13 @@
 ---
 title: 'KinESim: Pre-equilibrium kinetic simulation of electrochemical reactions'
+tags:
+  - Igor Pro
+  - chemistry
+  - kinetics
+  - homogeneous
+  - heterogeneous  
+  - equilibrium
+  - electrode
 authors: 
   - name: Christopher W. John
     orcid: 0000-0003-1713-1229
@@ -10,6 +18,7 @@ authors:
 affiliations:
   - name: Department of Chemistry, Michigan State University
     index: 1
+date: 21 July 2019
 bibliography: KinESim.bib
 
 ---
