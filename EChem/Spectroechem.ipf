@@ -1,6 +1,6 @@
 // Copyright © 2019, Denis A. Proshlyakov, dapro@chemistry.msu.edu
 // This file is part of Kin-E-Sim project. 
-// For citation, attribution and illustrations see <[PLACEHOLDER FOR PERMALINK TO THE ACCEPTED ARTICLE]> 
+// For citation, attribution and illustrations see <https://pubs.acs.org/doi/10.1021/acs.analchem.9b00859> 
 //
 // Kin-E-Sim is free software: you can redistribute it and/or modify it under the terms of 
 // the GNU General Public License version 3 as published by the Free Software Foundation.

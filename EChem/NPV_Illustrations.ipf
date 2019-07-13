@@ -1,6 +1,6 @@
 // Copyright © 2019, Denis A. Proshlyakov, dapro@chemistry.msu.edu
 // This file is part of Kin-E-Sim project. 
-// For citation, attribution and illustrations see <[PLACEHOLDER FOR PERMALINK TO THE ACCEPTED ARTICLE]> 
+// For citation, attribution and illustrations see <https://pubs.acs.org/doi/10.1021/acs.analchem.9b00859> 
 //
 // Kin-E-Sim is free software: you can redistribute it and/or modify it under the terms of 
 // the GNU General Public License version 3 as published by the Free Software Foundation.
@@ -67,7 +67,6 @@
 //							1 - forward and reverse (flip signs of NPV papams)
 
 
-
 Function NernstNPVOx(w,Eapp) : FitFunc
 	Wave w
 	Variable Eapp
@@ -90,8 +89,12 @@ Function NernstNPVOx(w,Eapp) : FitFunc
 	//CurveFitDialog/ w[4] = ampl1
 	//CurveFitDialog/ w[5] = E1
 	//CurveFitDialog/ w[6] = n1
+//	return w[0]+w[1]/(1+exp(w[3]*38.94*(w[2]-Eapp)))
+
 	
 	return w[0]+w[1]*(-(1-1/(1+exp(w[3]*38.94*(w[2]-Eapp)))) +w[4] *(1- 1/(1+exp((w[3]+w[6])*38.94*(w[2]-w[5]-Eapp))))) 
+//	return w[0]+w[1]*(1/(1+exp(w[3]*38.94*(w[2]-Eapp))) - w[4]/(1+exp((w[3]+w[6])*38.94*(w[2]+w[5]-Eapp))) )
+	
 End
 
 
@@ -117,10 +120,13 @@ Function NernstNPVRd(w,Eapp) : FitFunc
 	//CurveFitDialog/ w[4] = ampl1
 	//CurveFitDialog/ w[5] = E1
 	//CurveFitDialog/ w[6] = n1
+//	return w[0]+w[1]/(1+exp(w[3]*38.94*(w[2]-Eapp)))
+
 	
 	return w[0]+w[1]*(1/(1+exp(w[3]*38.94*(w[2]-Eapp))) - w[4]/(1+exp((w[3]+w[6])*38.94*(w[2]+w[5]-Eapp))) )
 	
 End
+
 
 //**************************************************************************************************************************************
 //
@@ -1264,14 +1270,14 @@ function processNPV(theSimW, theClbW, CWave, setE0ClbW, dirNPV, SetC)
 				variable noProg = 2; 
 				if (dirNPV > 0) // oxidation 
 					cW[4] = 0.25;
-					//outW =  NernstNPVRd(cW,theClbW[p] )
+					outW =  NernstNPVRd(cW,theClbW[p] )
 					FuncFit  /H=holdStr0 /N=(noUpd) /W=(noProg) /Q NernstNPVRd, cW, datW  /X=theClbW  /C=constrW0 /E=epsilonW //  /D=outW
 					FuncFit  /H=holdStr1 /N=(noUpd) /W=(noProg) /Q NernstNPVRd, cW, datW  /X=theClbW  /C=constrW1 /E=epsilonW   /D=outW
 					FuncFit  /H=holdStr2 /N=(noUpd) /W=(noProg) /Q NernstNPVRd, cW, datW  /X=theClbW  /C=constrW2 /E=epsilonW   /D=outW
 					FuncFit  /H=holdStr3 /N=(noUpd) /W=(noProg) /Q NernstNPVRd, cW, datW  /X=theClbW  /C=constrW3 /E=epsilonW  /D=outW
 				else // reduction
 					cW[4] =  0.25;
-					//outW =  NernstNPVOx(cW,theClbW[p] )
+					outW =  NernstNPVOx(cW,theClbW[p] )
 					FuncFit  /H=holdStr0  /N=(noUpd) /W=(noProg) /Q NernstNPVOx, cW, datW  /X=theClbW  /C=constrW0 /E=epsilonW //  /D=outW
 					FuncFit  /H=holdStr1  /N=(noUpd) /W=(noProg) /Q NernstNPVOx, cW, datW  /X=theClbW  /C=constrW1 /E=epsilonW   /D=outW
 					FuncFit  /H=holdStr2  /N=(noUpd) /W=(noProg) /Q NernstNPVOx, cW, datW  /X=theClbW  /C=constrW2 /E=epsilonW   /D=outW
@@ -1424,6 +1430,8 @@ function kiloNPVDevPlotAppend(plotN, compNum, direction, nrnstW, traceN, itemN, 
 	SetAxis /W=$plotN left -0.3,0.3;
 	SetAxis /W=$plotN bottom -0.5,0.5
 end	
+
+
 
 
 
