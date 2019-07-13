@@ -1,6 +1,6 @@
 ﻿// Copyright © 2019, Denis A. Proshlyakov, dapro@chemistry.msu.edu
 // This file is part of Kin-E-Sim project. 
-// For citation, attribution and illustrations see <[PLACEHOLDER FOR PERMALINK TO THE ACCEPTED ARTICLE]> 
+// For citation, attribution and illustrations see <https://pubs.acs.org/doi/10.1021/acs.analchem.9b00859> 
 //
 // Kin-E-Sim is free software: you can redistribute it and/or modify it under the terms of 
 // the GNU General Public License version 3 as published by the Free Software Foundation.
@@ -16,7 +16,7 @@
 
 #pragma IgorVersion=8.0
 
-strconstant cKESVer = "1.6.8g"
+strconstant cKESVer = "1.6.8h"
 
 
 
@@ -5170,7 +5170,8 @@ End
 
 
 
-
+//--------------------------------------------------------------------
+//
 Menu "Analysis"
 	Submenu "Kin-E-Sim"
 		"Control Panel", /Q, KinESimCtrl ()
@@ -5181,6 +5182,8 @@ Menu "Analysis"
 	end
 end
 
+//--------------------------------------------------------------------
+//
 Function UnloadKES()
 	if (WinType("KinESimCtrl") == 7)
 		DoWindow/K KinESimCtrl
@@ -5189,6 +5192,29 @@ Function UnloadKES()
 end
 
 
+//--------------------------------------------------------------------
+//
+Function AfterCompiledHook()
+	if (WinType("KinESimCtrl") != 7) // no such window or a wrong type
+		return 0;
+	endif 
+	
+	string actKESVer= GetUserData("KinESimCtrl", "InfoButton", "KESVer" )  
+	if (cmpstr(actKESVer, cKESVer))
+		// version of loaded panel is different
+		print "updating KineSim panel to version ",cKESVer 
+		ControlInfo /W=$("KinESimCtrl") $"jobListWSelect"
+
+		DoWindow /K KinESimCtrl
+		Execute /Q "KinESimCtrl()"
+		PopupMenu jobListWSelect, popmatch=S_value, win=$"KinESimCtrl"
+
+		simReloadPanelJob("KinESimCtrl", "jobListWSelect")
+	endif 
+end
+
+//--------------------------------------------------------------------
+//
 Window KinESimCtrl() : Panel
 	if (WinType("KinESimCtrl") == 7)
 		DoWindow/F KinESimCtrl
@@ -5203,6 +5229,7 @@ Window KinESimCtrl() : Panel
 	Button InfoButton,pos={4,6},size={20,20},proc=KESInfoProc,title="\\K(0,12800,52224)\\f03\\F'Times'i"
 	Button InfoButton,help={"About current version of analysis."},fSize=20
 	Button InfoButton,fColor=(65535,65535,65535)
+	Button InfoButton, userdata(KESVer)=cKESVer
 	Button simReload,pos={25,6},size={20,20},proc=simReloadProc,title="\\F'Wingdings 3'P"
 	Button simReload,help={"Read and re-interpret content of the job wave. This overries all other settigns. Same as selecting the same wave job again."}
 	Button makeCtrlTbl,pos={2,31},size={60,19},proc=makeCtrlTableProc,title="ctrl. table"
@@ -5418,12 +5445,12 @@ Window KinESimCtrl() : Panel
 	Button InfoButton,fSize=10,fStyle=1,fColor=(65535,65535,65535)
 
 	PopupMenu gRxnsParamWSelect,pos={24,v},size={165,21},bodyWidth=150,proc=gRxnsParamWProc,title="=>"
-	PopupMenu gRxnsParamWSelect,help={"Selection of wave describing general reactions. This is a wave of wave references; first entry is the wave with a list of rates & Ks, other - wave with reaciton stoichiometires."}
+	PopupMenu gRxnsParamWSelect,help={"Selection of wave describing general reactions. This is a wave of wave references; first entry is the wave with a list of rates & Ks, other - wave with reaciton stoichiometries."}
 	PopupMenu gRxnsParamWSelect,mode=1,popvalue="-",value= #"\"-;\"+wavelist(\"*\", \";\",\"DIMS:1,WAVE:1\")"
 	
-	TitleBox tableInfo,pos={190,v+2},size={11,13},title=" i "
-	TitleBox tableInfo,help={"Stoichiometry table: identify reactant (left) and product (right) components and number of equivalents of their reduced and oxidized forms involved in the reaction. Any section with amounts of Ox and Rd set at 0 is ignored."}
-	TitleBox tableInfo,labelBack=(0,0,0),frame=0,fStyle=1,fColor=(65535,65535,65535)
+	Button tableInfo,pos={190,v+2},size={11,17},proc=GRxnsInfoProc ,title=" i "
+	Button tableInfo,help={"Stoichiometry table: identify reactant (left) and product (right) components and number of equivalents of their reduced and oxidized forms involved in the reaction. Any section with amounts of Ox and Rd set at 0 is ignored."}
+	Button tableInfo,labelBack=(0,0,0),frame=0,fStyle=1,fColor=(0,0,65535)
 
 	PopupMenu rxnSelect,pos={5,v+24},size={55,21},proc=gRxnSelectProc,title="Rx#"
 	PopupMenu rxnSelect,help={"Currently selected reaction, whose properties are displayed."}
@@ -5483,9 +5510,9 @@ Window KinESimCtrl() : Panel
 	PopupMenu eRxnsParamWSelect,help={"Selection of wave describing echeml reactions. This is a wave of wave references; first entry is the wave with a list of rates, other - wave with reaciton stoichiometires."}
 	PopupMenu eRxnsParamWSelect,mode=1,popvalue="-",value= #"\"-;\"+wavelist(\"*\", \";\",\"DIMS:1,WAVE:1\")"
 	
-	TitleBox tableInfo,pos={190,v+2},size={11,13},title=" i "
-	TitleBox tableInfo,help={"Stoichiometry table: identify reactant (left) and product (right) components and number of equivalents of their reduced and oxidized forms involved in the reaction. Any section with amounts of Ox and Rd set at 0 is ignored."}
-	TitleBox tableInfo,labelBack=(0,0,0),frame=0,fStyle=1,fColor=(65535,65535,65535)
+	Button tableInfo,pos={190,v+2},size={11,17},proc=ERxnsInfoProc, title=" i "
+	Button tableInfo,help={"Stoichiometry table: identify reactant (left) and product (right) components and number of equivalents of their reduced and oxidized forms involved in the reaction. Any section with amounts of Ox and Rd set at 0 is ignored."}
+	Button tableInfo,labelBack=(0,0,0),frame=0,fStyle=1,fColor=(0,0,65535)
 
 	PopupMenu rxnSelect,pos={5,v+24},size={55,21},proc=eRxnSelectProc,title="Rx#"
 	PopupMenu rxnSelect,help={"Currently selected reaction, whose properties are displayed."}
@@ -7279,6 +7306,113 @@ function setRxn(wName, rxnsParamW, currRxn)
 
 end 
 
+//--------------------------------------------------------------------
+//
+Function ERxnsInfoProc(ba) : ButtonControl
+	STRUCT WMButtonAction &ba
+
+	switch( ba.eventCode )
+		case 2: // mouse up
+			string ctrlName = "eRxnsParamWSelect"
+			ControlInfo /W=$(ba.win) $ctrlName
+			
+			wave rxnsParamW = $S_Value;
+			
+			RxnInofTable(ba.win, rxnsParamW, "EChem reactions")
+			break
+		case -1: // control being killed
+			break
+	endswitch
+
+	return 0
+End
+
+
+//--------------------------------------------------------------------
+//
+Function GRxnsInfoProc(ba) : ButtonControl
+	STRUCT WMButtonAction &ba
+
+	switch( ba.eventCode )
+		case 2: // mouse up
+			string ctrlName = "gRxnsParamWSelect"
+			ControlInfo /W=$(ba.win) $ctrlName
+			
+			wave rxnsParamW = $S_Value;
+			
+			RxnInofTable(ba.win, rxnsParamW, "General reactions")
+			break
+		case -1: // control being killed
+			break
+	endswitch
+
+	return 0
+End
+
+
+//--------------------------------------------------------------------
+//
+function RxnInofTable(wName, rxnsParamW, caption)
+	string wName
+	wave /WAVE rxnsParamW
+	string Caption
+	
+	variable nRx = 0;
+	variable i;
+	if (!waveexists(rxnsParamW))
+		DoAlert /T="Can't do it!" 2, "There is no reactions wave selected and nothing to show!"
+		return 0;
+	endif 
+
+	wave ratesW = rxnsParamW[0]
+	if (waveexists(ratesW))
+		nRx = dimsize(ratesW, 0);
+		make /T /O /N=(nRx ) $"RxnsInfoListW"
+		wave /T infoList = $"RxnsInfoListW"
+		for (i=0; i < nRx; i += 1 )
+			wave theRxW = rxnsParamW[i+1];
+			if (waveexists(theRxW))
+				infoList[i] = GetWavesDataFolder(theRxW,2) 
+			else
+				infoList[i] = "invalid reaction wave reference #"+num2str(i);
+				nRx = i;
+				break;
+			endif 
+		endfor
+	else
+		DoAlert /T="Can't do it!" 2, "Reactions wave exists but thermodynamics wave is missing.\n You may need to assign it manually."
+		return 0;
+	endif
+
+	
+	NewPanel /W=(150,50,610,400) /N=KES_RxnsInofPanel as Caption + " information" 
+	AutoPositionWindow /R=KinESimCtrl KES_RxnsInofPanel
+	DrawText 6,18,"Thermodynamic wave:"
+	TitleBox TDWaveName,pos={5,16},size={450,24},title=GetWavesDataFolder(rxnsParamW,2),frame=5
+	DrawText 9,58,"Reactions waves:"
+	TitleBox TDWaveName,fixedSize=1
+	ListBox RxnsWavesList,pos={5,60},size={450,250}
+	ListBox RxnsWavesList,listWave=$nameofwave(infoList)
+	Button RxnsInfoDoneBtn,pos={5,315},size={450,20},proc=RxnsInfoDoneProc,title="Done", fColor=(19456,39168,0)
+	Pauseforuser KES_RxnsInofPanel	
+end 
+
+//--------------------------------------------------------------------
+//
+Function RxnsInfoDoneProc(ba) : ButtonControl
+	STRUCT WMButtonAction &ba
+
+	switch( ba.eventCode )
+		case 2: // mouse up
+			DoWindow /K $ba.win
+			KillWaves /Z $"RxnsInfoListW"
+			break
+		case -1: // control being killed
+			break
+	endswitch
+
+	return 0
+End
 
 //--------------------------------------------------------------------
 //
