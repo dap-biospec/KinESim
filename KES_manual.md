@@ -1,6 +1,6 @@
-Return to the [readme](https://github.com/dap-biospec/KinESim/blob/master/KES_manual/readme.md)
+Return to the [readme](https://github.com/dap-biospec/KinESim/blob/master/readme.md)
 
-See the [API](https://github.com/dap-biospec/KinESim/blob/master/KES_manual/KES_API.md)
+See the [API](https://github.com/dap-biospec/KinESim/blob/master/KES_API.md)
 
 ## Installation:
 - Download `KES_complete.ipf` from the KES folder and `NPV_Illustration.ipf` and `Spectroechem.ipf` from the EChem folder. Store these files in the same folder in any location.  
@@ -57,12 +57,12 @@ Kin-E-Sim is multithreaded (MT) simulation. This is accomplished differently dep
 	- If single simulation is set to a MT mode (`CPU threads` > 1), simulations in the set will be carried out sequentially. 
 
 ## Control Panel
-![alt text](https://github.com/dap-biospec/KinESim/blob/master/KES_manual/Figures/ControlPanel.png)
+![alt text](https://github.com/dap-biospec/KinESim/blob/master/Figures/ControlPanel.png)
 The `Control Panel` used to perform Kin-E-Sim simulations is shown above. Each sub-panel and its functions are described below:
 ### Top-left corner
-![alt text](https://github.com/dap-biospec/KinESim/blob/master/KES_manual/Figures/TLC.png)
-- ![alt text](https://github.com/dap-biospec/KinESim/blob/master/KES_manual/Figures/TLC_i.png): Shows the current version of Kin-E-Sim kinetic simulator
-- ![alt text](https://github.com/dap-biospec/KinESim/blob/master/KES_manual/Figures/TLC_refresh.png): Reloads selected job
+![alt text](https://github.com/dap-biospec/KinESim/blob/master/Figures/TLC.png)
+- ![alt text](https://github.com/dap-biospec/KinESim/blob/master/Figures/TLC_i.png): Shows the current version of Kin-E-Sim kinetic simulator
+- ![alt text](https://github.com/dap-biospec/KinESim/blob/master/Figures/TLC_refresh.png): Reloads selected job
 - `job`: Allows for the selection of a user-defined job set that specifies all values, methods, and waves for the simulation. Job sets are stored in text waves. Multiple job waves can be made to easily switch between experiments. 
 - `sets=>`: Defines parameters of single simulation or simulation sets.
 - `ctrl. table`: Creates a table showing the names and contents of all parameter waves for the selected job. Parameters can be edited from this table. Press   to update changes in the Control Panel.
@@ -70,7 +70,7 @@ The `Control Panel` used to perform Kin-E-Sim simulations is shown above. Each s
 - `flags`: miscellaneous flags
 - `esim =>`: Defines the configuration of the electrochemical system and parameters of the numerical integrator. 
 ### Simulation
-![alt text](https://github.com/dap-biospec/KinESim/blob/master/KES_manual/Figures/simulation_sp.png)
+![alt text](https://github.com/dap-biospec/KinESim/blob/master/Figures/simulation_sp.png)
 - `prep`: function that generates the potential waveform or performs other pre-simulation steps
 - `process`: function that performs step-wise simulation and integration
 - `plot`: function for post-processing of a single simulation, including preparation of a report graphs.
@@ -86,7 +86,7 @@ The `Control Panel` used to perform Kin-E-Sim simulations is shown above. Each s
 ### Integrator
 Parameters for Runge-Kutta integration
 
-![alt text](https://github.com/dap-biospec/KinESim/blob/master/KES_manual/Figures/integrator_sp.png)
+![alt text](https://github.com/dap-biospec/KinESim/blob/master/Figures/integrator_sp.png)
 - **RK limits in solution/electrode**: limit of changes in concertation of any component relative to that at the beginning of the step.
 	- `i-th drop`: maximal reduction in the concentration during incremental RK step. 
 	- `i-th rise`: maximal rise in the concentration during incremental RK step.
@@ -100,7 +100,7 @@ Parameters for Runge-Kutta integration
 ### Components
 This section is used to define the components that make up the simulated reaction, including all mediators and analytes.
 
-![alt text](https://github.com/dap-biospec/KinESim/blob/master/KES_manual/Figures/components_sp.png)
+![alt text](https://github.com/dap-biospec/KinESim/blob/master/Figures/components_sp.png)
 - `=>`: Drop down menu to select the wave containing the list of components and their properties, including interactions with the electrode.
 - `C#`: Drop down menu to select ID of an individual component in this set, followed by its literal name
 - `+ C#`: add a component
@@ -124,13 +124,13 @@ This section is used to define the components that make up the simulated reactio
 ### Method settings 
 User selects an Igor wave containing the method parameters. These parameters are used by the preparation function to generate a potential waveform.
 
-![alt text](https://github.com/dap-biospec/KinESim/blob/master/KES_manual/Figures/MethodSettings_sp.png)
+![alt text](https://github.com/dap-biospec/KinESim/blob/master/Figures/MethodSettings_sp.png)
 
 ### Echem reactions
 This section defines the electrochemical reactions that take place in solution between mediators and analytes.
 
-![alt text](https://github.com/dap-biospec/KinESim/blob/master/KES_manual/Figures/EchemRxns_sp.png)
-- ![alt text](https://github.com/dap-biospec/KinESim/blob/master/KES_manual/Figures/Rxns_create.png): Pressing this button creates the waves needed to set up the reactions 
+![alt text](https://github.com/dap-biospec/KinESim/blob/master/Figures/EchemRxns_sp.png)
+- ![alt text](https://github.com/dap-biospec/KinESim/blob/master/Figures/Rxns_create.png): Pressing this button creates the waves needed to set up the reactions 
 - `Rx#`: Drop down menu used to select reactions to be edited, followed by the literal name of the reaction.
 - `+ Rx`: add a reaction to the list
 - `- Rx`: remove the currently selected reaction.
@@ -138,7 +138,7 @@ This section defines the electrochemical reactions that take place in solution b
 - `k(fwd)`: The forward rate of the reaction (user input)
 - `w`  and `Thermo w.`: Read-only names of waves used internally to describe current reaction. 
 - **Reaction table**
-![alt text](https://github.com/dap-biospec/KinESim/blob/master/KES_manual/Figures/Rxns_table.png)
+![alt text](https://github.com/dap-biospec/KinESim/blob/master/Figures/Rxns_table.png)
 	- Each row is used to describe how a single component is changed during a reaction. Rows can be added for reactions that involve multiple components by pressing the “+ row” button or removed by pressing the “- row” button. 
 	- Columns:
 		- `->|#..`: ID of the reactant component
