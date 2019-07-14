@@ -1,6 +1,6 @@
-Return to the [readme](https://github.com/dap-biospec/KinESim/blob/master/KES_manual/readme.md)
+Return to the [readme](https://github.com/dap-biospec/KinESim/blob/master/readme.md)
 
-See the [manual](https://github.com/dap-biospec/KinESim/blob/master/KES_manual/KES_manual.md)
+See the [manual](https://github.com/dap-biospec/KinESim/blob/master/KES_manual.md)
 
 ## API
 Note to users: The following is a list of commands automatically called by the Kin-E-Sim `Control Panel`. Knowledge of these commands is not required to use KinESim. Full functionality is provided by the `Control Panel` however these commands can be performed manually by calling them in the Igor command line.
