@@ -3,14 +3,35 @@ Return to the [readme](https://github.com/dap-biospec/KinESim/blob/master/readme
 See the [API](https://github.com/dap-biospec/KinESim/blob/master/KES_API.md)
 
 ## Installation:
-- Download `KES_complete.ipf` from the KES folder and `NPV_Illustration.ipf` and `Spectroechem.ipf` from the EChem folder. Store these files in the same folder in any location.  
-- Open Igor Pro. Select `File` -> `Open File` -> `Procedure…`
-- Locate the folder containing the necessary files. Select `KES_complete.ipf` and `Open`. 
-- A window containing the procedure will appear within the Igor workspace. Close the window. A dialog box will appear. Select `Hide`. This will compile the procedure and hide the procedure from view. Selecting `Kill` will permenantly remove the procedure from the current Igor experiment.
-- Repeat this step for `NPV_Illustrations.ipf` and `Spectroechem.ipf`.  
+- Clone the git repo and open KinESim.ipf in IgorPro.
+	- Open Igor Pro. Select `File` -> `Open File` -> `Procedure…`
+	- Locate the folder containing the necessary files. Select `KES_complete.ipf` and `Open`. 
+	- A window containing the procedure will appear within the Igor workspace. Close the window. A dialog box will appear. Select `Hide`. This will compile the procedure and hide the procedure from view. Selecting `Kill` will permenantly remove the procedure from the current Igor experiment.
+	- Repeat this step for `NPV_Illustrations.ipf` and `Spectroechem.ipf`.  
 - Once Kin-E-Sim is loaded and compiled, it can be accessed by selecting `Analysis` -> `Kin-E-Sim` -> `Control Panel`. The `Control Panel` will appear.  
 - Finally, select `Analysis` -> `Kin-E-Sim` -> `Create Set`. A dialog box will appear asking for a name. Any name can be entered here. Click `Continue`. All necessary waves will be generated.
 - From the `Control Panel` select the job that you just named to load the waves into the `Control Panel`.
+
+The code consists of three units:
+- KES_Core: simulation engine, implemented as KES independent module; Includes:
+	- KES_Core_Aliases.ipf
+	- KES_Core_FLow.ipf
+	- KES_Core_Integrator.ipf
+	- KES_Core_Log.ipf
+	- KES_Core_Progress.ipf
+	- KES_Core_Struct.ipf
+	
+- KES_Sets: handles preparation and processing of individual simulations and their sets; hands simulations off to KES_Core, which is required; implemented as KES_Sets module; Includes:
+	- KES_Sets_Aux.ipf
+	- KES_Sets_Flow.ipf
+	- KES_Sets_Progress.ipf
+	- KES_Sets_Proxy.ipf
+	- KES_Sets_Struct.ipf
+	
+- KES_GUI: Implements users interface; requires KES_Core and KES_Sets; implemented as KES_GUI module; includes:
+	- KES_GUI_Aux.ipf
+	- KES_GUI_Comp.ipf
+	- KES_GUI_Rxns.ipf
 
 ## Kin-E-Sim Demo
 A demo with pre-loaded simulations is provided in the `KES_Demo.pxp` file. A description of each pre-loaded simulation and instructions on how to perform them are provided below. Kin-E-Sim simulations are performed using the `Control Panel`. Full details of the `Control Panel` are provided in the following section. 
