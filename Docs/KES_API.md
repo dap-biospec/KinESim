@@ -31,13 +31,13 @@ Upon loading, only KineSim.ipf is visible in the list of procedure files to keep
 
 ### Contents
 
-#### [KES_Core](https://github.com/dap-biospec/KinESim/blob/master/Docs/KES_API.md#KES_Core)
+- [KES_Core](https://github.com/dap-biospec/KinESim/blob/master/Docs/KES_API.md#KES_Core)
 
-#### [KES_Sets](https://github.com/dap-biospec/KinESim/blob/master/Docs/KES_API.md#KES_Sets)
+- [KES_Sets](https://github.com/dap-biospec/KinESim/blob/master/Docs/KES_API.md#KES_Sets)
 
-#### [KES_GUI](https://github.com/dap-biospec/KinESim/blob/master/Docs/KES_API.md#KES_GUI)
+- [KES_GUI](https://github.com/dap-biospec/KinESim/blob/master/Docs/KES_API.md#KES_GUI)
 
-#### [Data Structures](https://github.com/dap-biospec/KinESim/blob/master/Docs/KES_API.md#Data_Structures)
+- [Data Structures](https://github.com/dap-biospec/KinESim/blob/master/Docs/KES_API.md#Data_Structures)
 
 ### KES_Core
 #### threadsafe function `Sim_Core_Seq(SWave, CWave, PWave, ERxnsW, GRxnsW, RxnsTmp, OWave, idx, LogWave, logMode)
