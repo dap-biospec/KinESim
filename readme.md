@@ -9,7 +9,7 @@ Kin-E-Sim is a package for Igor Pro designed to predict the characteristic respo
 Clone the git repository and open the KES/KinESim.ipf in IgorPro.  The necessary dependencies are included and are loaded by KinESim.ipf. See [API](https://github.com/dap-biospec/KinESim/blob/master/Docs/KES_API.md#Structure) for more details of file structure. 
 
 ## Using KinESim
-A [manual](https://github.com/dap-biospec/KinESim/blob/master/Docs/KES_manual.md) is provided that includes instructions for [installation](https://github.com/dap-biospec/KinESim/blob/master/Docs/KES_manual.md#Installation), a tutorial featuring [demo simulations](https://github.com/dap-biospec/KinESim/blob/master/Docs/KES_manual.md#Kin-E-Sim-Demo), and a complete description of the KinESim [control panel](https://github.com/dap-biospec/KinESim/blob/master/Docs/KES_manual.md#Control-Panel).
+A [manual](https://github.com/dap-biospec/KinESim/blob/master/Docs/KES_manual.md) is provided that includes instructions for [installation](https://github.com/dap-biospec/KinESim/blob/master/Docs/KES_manual.md#Installation), a tutorial featuring [demo simulations](https://github.com/dap-biospec/KinESim/tree/master/Demo), and a complete description of the KinESim [control panel](https://github.com/dap-biospec/KinESim/blob/master/Docs/KES_manual.md#Control-Panel).
 
 A demo of Kin-E-Sim containing pre-loaded simulations is available [here](https://github.com/dap-biospec/KinESim/blob/master/Demo).
 
