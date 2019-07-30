@@ -83,6 +83,12 @@ function /S childWCopy(theWName, oldSetName, newSetName, tgtPath, thisSetW, inde
 			wave /T thisSetW;
 			variable index;
 
+			if (strlen(theWName) == 0)
+				return ""
+			endif
+			if (!waveexists($theWName))
+				abort "childWCopy cannot find wave "+theWName
+			endif 			
 			string thisRWN =newSetName+ReplaceString(oldSetName, theWName, "");
 			string thisRWP=tgtPath+thisRWN
 			duplicate /O  $theWName $thisRWP

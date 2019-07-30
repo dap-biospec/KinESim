@@ -137,21 +137,23 @@ function SimCtrlTable(jobListW)
 	endif 
 	wave  ESimComp = $jobListW[4];
 
-	if (!waveexists($jobListW[5]))
-		print "rates wave "+jobListW[5]+" is not found\r";
-		return 1;
-	endif 
-	wave Rates = $jobListW[5];
-
 	string title = jobName+" control table";
-	
-	Edit /W=(5.25,43.25,1277.25,716) jobListW.ld, JobParams.ld,MethodParams.ld,ESimParams.ld, ESimComp.ld,Rates.ld as title
+
+	Edit /W=(5.25,43.25,1277.25,716) jobListW.ld, JobParams.ld,MethodParams.ld,ESimParams.ld, ESimComp.ld as title
 	
 	ModifyTable format(Point)=1,width(Point)=23,style( jobListW.l)=1,width( jobListW.l)=95
 	ModifyTable width( jobListW.d)=129,style(JobParams.l)=1,width(JobParams.d)=50,style(MethodParams.l)=1
 	ModifyTable width(MethodParams.d)=45,style(ESimParams.l)=1,width(ESimParams.l)=122
-	ModifyTable width(ESimParams.d)=41,style(ESimComp.l)=1,width(ESimComp.d)=45,style(Rates.l)=1
-	ModifyTable width(Rates.l)=53,width(Rates.d)=27
+	ModifyTable width(ESimParams.d)=41,style(ESimComp.l)=1,width(ESimComp.d)=45
+
+	if (!waveexists($jobListW[5]))
+//		print "rates wave "+jobListW[5]+" is not found\r";
+//		return 1;
+	else
+		wave Rates = $jobListW[5];
+		AppendToTable Rates.ld
+		ModifyTable style(Rates.l)=1,width(Rates.l)=53,width(Rates.d)=27
+	endif 
 
 end
 

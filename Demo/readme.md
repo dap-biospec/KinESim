@@ -1,53 +1,136 @@
 # Kin-E-Sim Demo
-A demo with pre-loaded simulations is provided in the `KES_Demo.pxp` file. A description of each pre-loaded simulation and instructions on how to perform them are provided below. Kin-E-Sim simulations are performed using the `Control Panel`. Full details of the `Control Panel` are provided in the following section. 
+The KinESim Demo file (KES_Demo.pxp) is included with the KinESim instillation. See the [manual](https://github.com/dap-biospec/KinESim/blob/master/Docs/KES_manual.md) for instillation instructions.
 
-- **Single analyte direct electrochemistry:** This simulation simulates normal pulsed voltammetry of a single analyte that undergoes direct electrochemistry on the electrode. As loaded, the analyte has a redox potential of -0.1 V. 
-		 
-- **Single analyte mediated electrochemistry:** This simulates NPV of a single analyte and mediator. The analyte is unable to perform any electron transfer on the electrode and is completely dependent on the mediator for redox transitions. As loaded, both the analyte and mediator have a redox potential of -0.1 V. The concentration of the analyte is 1 mM and the concentration of the mediator is 200 ÂµM. 
-- **Single analyte mediator with two redox transitions:** This simulation simulates NPV of a single analyte and mediator where the mediator has two distinct redox transitions. As loaded, the analyte has a redox potential of -0.1 V and the mediator has two redox potentials at 0.0 V and -0.2 V. The concentration of the analyte is 1 mM and concentration of the mediator is 200 ÂµM total. 
->**Hint:** A single mediator with two distinct redox transitions is accomplished by making two separate components and connecting them using the `alias this` function. Each component must start with a concentration value greater than 0 and the sum of the two concentrations is the total concentration of the mediator.
+## Performing a simulation
+Open KES_Demo.pxp file. 
 
-## Installation:
-- Clone the git repository and open the KES/KinESim.ipf in IgorPro.  The necessary dependencies are included and are loaded by KinESim.ipf. See [API](https://github.com/dap-biospec/KinESim/blob/master/Docs/KES_API.md#Structure) for more details of file structure. 
-	- Open Igor Pro. Select `File` -> `Open File` -> `Procedureâ€¦`
-	- Locate the folder containing the necessary files. Select `KinESim.ipf` and `Open`. 
-	- A window containing the procedure will appear within the Igor workspace. Close the window. A dialog box will appear. Select `Hide`. This will compile the procedure and hide the procedure from view. Selecting `Kill` will permenantly remove the procedure from the current Igor experiment.
-	- Repeat this step for `NPV_Illustrations.ipf` and `Spectroechem.ipf`.  
-- Once Kin-E-Sim is loaded and compiled, it can be accessed by selecting `Analysis` -> `Kin-E-Sim` -> `Control Panel`. The `Control Panel` will appear.  
-- Finally, select `Analysis` -> `Kin-E-Sim` -> `Create Set`. A dialog box will appear asking for a name. Any name can be entered here. Click `Continue`. All necessary waves will be generated.
-- From the `Control Panel` select the job that you just named to load the waves into the `Control Panel`.
+To open the KinESim control panel click `Analysis -> Kin-E-Sim -> Control Panel`
 
-## Performing a single simulation
+A simulation is already set up, it just needs to be loaded into the panel. 
 
-- First, use the `Data Browser` (`Data` -> `Data Browser`) in Igor to select the folder with the title of the simulation you would like to run. This is done by clicking and dragging the red arrow to the desired experiment folder. Then click **[insert image]** in the top-left corner of the Kin-E-Sim `Control Panel`. The simulation should now be loaded containing all the pre-set commands and parameters.
+In the top-left corner of the panel, click the drop down menu labeled `job` and select `NPVJob`.
+
+The preset simulation performs normal pulsed voltammetry of an analyte with a redox potential of -0.1 V. The properties of this analyte have been preset so that it has fast electrochemical kinetics with the electrode. 
+
+Click `do this sim` in the simulation panel to see how this analyte performs.
+
+The following graph should appear showing you the potential profile of the NPV method (grey) and the concentration profile of the analyte in its oxidized form (red).
+
+![alt text](https://github.com/dap-biospec/KinESim/blob/master/Docs/Figures/demoFig1.png)
+
+*Figure 1*
+
+
+This gives us a good idea of the behavior of our analyte but we can change the NPV parameters to get a more informative picture. 
+
+## Modifying Parameters
+Under the `Method Settings` panel, change `NPV Low E` to -0.4. This will change the initial applied potential from -0.2 V to -0.4 V giving us a wider view of the analyte behavior.
+
+Also change `NPV StepsE` to 20. This will reduce the size of the potential step and give us more data points. 
+
+Click `do this sim` and the graph should change to look like this:
+
+![alt text](https://github.com/dap-biospec/KinESim/blob/master/Docs/Figures/demoFig2.png)
+
+*Figure 2*
+
+This gives us a much better view of how our analyte behaves. 
+
+Now let’s try simulating a scenario.
+
+In this scenario, we have a single analyte with slow electrochemical kinetics on the electrode. 
+
+In the `Components` panel change `ET rate` to 0.001 and `lim. rate` to 0.001.
+
+Click `do this sim` and see how the analyte behaves:
+
+![alt text](https://github.com/dap-biospec/KinESim/blob/master/Docs/Figures/demoFig3.png)
+
+*Figure 3*
+
+Notice that our analyte is no longer being completely reduced or oxidized at each potential step. 
+
+Our goal now is to find a mediator that will improve the rate of electron transfer to and from the analyte so that we can achieve a profile like we saw in Figure 2.
+
+## Adding Components
+Let’s add a new component that will represent our mediator to our components panel.
+To do this click the `+C#` button in the `components` panel
+
+A new component has been made but it needs a name. Type “Mediator 1” into the text box.
+
+You can switch between the analyte and mediator 1 by clicking the drop down menu labeled `C #` and selecting `0` (the analyte) or `1` (the mediator). 
+
+Let’s give our mediator some electrochemical properties. The default value for the redox potential (`E0`) is 0 V. Keep this value 0. Change `n` to 1. This means that the mediator transfers 1 electron per mediator molecule. Change `alpha` to 0.5. This represents the alpha of the mediator. This value is typically assumed to be 0.5 for most electrochemically active species.
+
+We want a mediator with fast kinetics so change `ET rate` to 0.2 and `lim. Rate` to 0.5.
+
+Now that we’ve described our mediator we still need to add some amount of the mediator to our simulated electrochemical reaction. Since we are performing oxidation, we will start with a completely reduced sample. `[ox.]` is the concentration of oxidized mediator in the sample in molarity and should remain 0. Change `[rd.]`, the concentration of reduced mediator in the sample to 0.0002 M. 
+
+Click `do this sim` and see how it looks:
+
+![alt text](https://github.com/dap-biospec/KinESim/blob/master/Docs/Figures/demoFig4.png)
+
+*Figure 4*
+
+Our mediator is shown in red and our analyte in purple. Notice the profile of the mediator demonstrates fast electrochemical kinetics, just what we wanted. But our analyte is still showing slow kinetics. This is because we have not told KinESim how the mediator and analyte interact. So KinESim is simulating the two components as if they have no interaction in solution. 
+
+To fix this we need to add an E-chem reaction.
+
+To do this, click the ![alt text](https://github.com/dap-biospec/KinESim/blob/master/Docs/Figures/Rxns_create.png) button in the `E-Chem reactions` panel. This will generate the Igor waves needed to describe an E-Chem reaction. 
+
+Name the reaction “M1+A” by typing the name in the text box of the `E-chem reactions` panel. 
+
+Below is a table that describes the E-chem reaction. See the [manual](https://github.com/dap-biospec/KinESim/blob/master/Docs/KES_manual.md#Echem-reactions) for a description of the table. 
+
+![alt text](https://github.com/dap-biospec/KinESim/blob/master/Docs/Figures/demoFig5.png)
+
+*Figure 5*
+
+Each row in the table represents a component changing from one state to the next. 
+
+We need to add a row so that there is one row for the analyte and one row for the mediator.
+
+Click the `+ row` button to add a row. 
+
+Now fill in the table as shown below:
+
+![alt text](https://github.com/dap-biospec/KinESim/blob/master/Docs/Figures/demoFig6.png)
+
+*Figure 6*
+
+This E-chem reaction table tells KinESim that component 0 (the analyte) and component 1 (the mediator) will perform an electrochemical reaction where 1 oxidized molecule of component 0 + 1 reduced molecule of component 1 will become 1 reduced molecule of component 0 + 1 oxidized molecule of component 1. 
+
+KinESim automatically understands that this reaction can occur in the reverse order. 
+
+Now we just need to input a value for the rate constant of the forward reaction. Change `k(fwd)` to 500. This will make the electron transfer between the mediator and analyte fast. 
+
+Click `do this sim` and let’s see how well our mediator works.
  
-- To run a single simulation using the specified parameters, press the `do this sim` button in the `simulation` sub-panel. Note that the name of the simulation can be changed using the `base name` text box found in the simulation panel. Each simulation must have a unique `base name`. A new window should appear that displays the amount of time needed for the simulation to complete. Once the simulation has completed, a graph will appear containing the potential profile and concentration profiles of each component present in the simulation. 
-
-- After the simulation is completed for the first time, a new folder `SimData` will appear as a sub-folder of the selected simulation root folder and will contain Igor waves. The Igor wave with the same title as the simulation will contain all of the simulated data, including the applied potential and the concentration of each component in both the reduced and oxidized states for each time point.
+![alt text](https://github.com/dap-biospec/KinESim/blob/master/Docs/Figures/demoFig7.png) 
+ 
+The concentration of the analyte profile has improved but the reduction process still seems a bit sluggish.
 
 ## Performing a set of simulations
-- The `sim. set` sub-panel of both pre-loaded simulations has been set up to perform three simulations where the redox potential of the analyte is varied between -0.2, -0.1, and 0.0 V. 
+Let’s see what effect the redox potential of the mediator has on its ability to perform electron transfer with the analyte. We’ll want to sample a range of redox potential values. We can do all of this at once using the `sim. set` panel. 
 
-- First, use the `Data Browser` in Igor to select the folder with the title of the simulation you would like to run. Then click   in the top-left corner of the Kin-E-Sim `Control Panel`. The simulation should now be loaded containing all the pre-set commands and parameters.
+The `sim. set` panel is already set up to change the redox potential from -0.2 to 0 in 3 steps for component number 0. This means that three simulations will be performed where the analyte redox potential is varied between -0.2 V, -0.1 V, and 0.0 V. But we want to vary the redox potential of the mediator, not the analyte. Change `vary C#` to 1. 
 
-- To perform a set of simulations, press the `do single set` button in the `sim. set` sub-panel. Once clicked, a window will appear showing the progress of the simulation.
+Before we run the simulation we should change the name of the simulation. KinESim uses this name when it generates waves and graphs of simulated data. Therefore, performing a simulation with the same name as the previous will overwrite the previous data. For this reason, it is good practice to use a different name for every simulation you perform. 
 
-- After the simulation is complete, a separate graph will be built for each simulation and will show the potential profile and concentration profiles of all components. A new folder `SimData` will appear as a sub-folder of the selected simulation root folder and will contain sets of Igor waves. Wave names will contain numerical suffixes that reflect the order in the set (ex. simname00, simname01, etc.). Format of output waves is the same as for a single simulation. 
+Change the `base name` in the `simulation` section to “M_Ox_set”
 
-- New waves will also appear in the main simulation folder
-	- `simname_EappClb`: contains the list of applied potentials (no reference potentials included). 
-	- `simname_SetClb`: reports the value of the varied variable (in this case, the redox potential of the analyte) for each simulation. 
-	- `simname_OxC00_NPV`: contains the concentration of component 0 at each applied potential for all three experiments. This data can be transposed into a vertical column and plotted versus `simname_EappClb` to visualize the Nernstian profile. 
+Now click `do single set`
 
-## Altering simulation parameters
-Kin-E-Sim is a flexible framework that can simulate any experimental method that can be programmatically described. This is accomplished by passing a list of parameters (defined in Method Settings wave) to several template functions (simulation prep, process and plot). Users can write their own prep and process function or re-define any of parameters as long there is consistency between parameters and functions. Notice that for a function to be recognized by Kin-E-Sim, it must have exact same order and type of parameters as defined in the template or the example. 
+Three profiles will appear. They may be stacked so if you only see one, try moving the top window to reveal the other profiles. 
 
-## Altering reaction schemes
-Kin-E-Sim was originally developed to simulate changes in homogeneous solution in response to applied potentials. However, it can simulate any combination of multiple reactions on the electrode, in the solution, or the mixture of two types of reactions. This includes branching, isomerization and multi-step reactions, that can be defined using component aliases. Method parameters and setup functions may be irrelevant for simulations involving homogenous reactions only. 
+They should look like the following:
 
-## Multi-threaded simulations
-Kin-E-Sim is multithreaded (MT) simulation. This is accomplished differently depending on whether a single or multiple simulations are carried out. 
-- Single simulation: multiple threads can be used for RK integration. Notice, however, that MT carries an overhead that my make parallel integration more time consuming than a single threaded. Compare results of using 0-1 cores vs 2+ cores on your particular computer. 
-- Sets of simulations: 
-	- If single simulation is set to a ST mode (`CPU threads` < 2), simulations in the set will be carried out in parallel. This is the recommended mode.  
-	- If single simulation is set to a MT mode (`CPU threads` > 1), simulations in the set will be carried out sequentially. 
+![alt text](https://github.com/dap-biospec/KinESim/blob/master/Docs/Figures/demoFig8a.png)
+
+![alt_text](https://github.com/dap-biospec/KinESim/blob/master/Docs/Figures/demoFig8b.png)
+
+![alt_text](https://github.com/dap-biospec/KinESim/blob/master/Docs/Figures/demoFig8c.png)
+ 
+Notice that the mediator profile shifts as its redox potential changes. 
+
+The second simulation gives us the result we were looking for. Therefore, we should use a mediator that has a redox potential of -0.1 V which is the same as that of our analyte. 

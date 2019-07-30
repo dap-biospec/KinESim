@@ -1,4 +1,5 @@
-﻿// Copyright © 2019, Denis A. Proshlyakov, dapro@chemistry.msu.edu
+﻿#pragma IndependentModule= KES
+// Copyright © 2019, Denis A. Proshlyakov, dapro@chemistry.msu.edu
 // This file is part of Kin-E-Sim project. 
 // For citation, attribution and illustrations see <https://pubs.acs.org/doi/10.1021/acs.analchem.9b00859> 
 //
@@ -151,7 +152,8 @@ threadsafe  function /S prepSimAliases(commName, cN,  simTmpData, CWave, stealth
 	
 	for (	thisCmpState = 0; thisCmpState <=1; thisCmpState +=1 ) // 0 = oxidized,  1 = reduced
 		for (thisCmpRow=0; thisCmpRow<cN; thisCmpRow+=1)
-			if (numtype(MergerW[thisCmpRow][1][thisCmpState])) // there are less than two entries!
+			if ((dimsize(MergerW, 1) < 2) || (numtype(MergerW[thisCmpRow][1][thisCmpState]))) 
+				// there are less than two entries!
 				continue;
 			endif
 			// merger needs to be done to that address 

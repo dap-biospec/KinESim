@@ -339,8 +339,11 @@ threadsafe function /WAVE Int_Med_NPV04W(ResultWNSuffix, simData)
 			endif
 			iStartN = round(highStartN + (iStartT  - highStartT) * (high_pnts -1) / high_time ); 
 			iEndN = round (highStartN + (iEndT  - highStartT) * (high_pnts -1) / high_time) ;  
+			if (iEndN >= dimsize(SWave,0))
+				iEndN = dimsize(SWave,0) -1;
+			endif 
 
-			IWave[CurrStep*2+1][0] = average_rows(SWave, 1, iStartN, iEndN); // FromE + (ToE-FromE) * ;
+			IWave[CurrStep*2+1][0] = average_rows(SWave, 1, iStartN, iEndN); 
 			offsI = intHead;
 			for (i=0; i< cN; i+=1, offsI += intComp)
 				offsS = simData.S_C_Offs + simData.S_C_Num * i
@@ -368,6 +371,7 @@ threadsafe function /WAVE Int_Med_NPV04W(ResultWNSuffix, simData)
 
 	return IWave;	
 end
+
 
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -441,17 +445,18 @@ function simNPVPlotBuild(plotN, theSim, direction, commTraceN, nameSuffix)
 
 	variable cN = dimsize(theSim.CWave,1);
 	variable i; 
-	variable lstyle = direction > 0 ? 0 : 2;
+	variable lstyle = direction >= 0 ? 0 : 2;
 	string traceList = TraceNameList(plotN, ";", 1);
 	
 	// overall 
 	string traceN = commTraceN+"Eapp"+nameSuffix;
-
 	if (findListItem(traceN,traceList) == -1) // trace is not on the list
 		AppendToGraph  /R  /W=$plotN  theSim.SWave[*][1]/TN=$traceN vs theSim.SWave[*][0]
 	endif
-	ModifyGraph  /W=$plotN rgb($traceN)=(0, 0, 0), lstyle($traceN)=(lstyle)
+	ModifyGraph  /W=$plotN rgb($traceN)=(32768, 32768, 32768), lstyle($traceN)=(lstyle)
+	string EAxisLabel = "E\\Bapp\\M / V (\s("+traceN+"))"	
 	
+	String sLegend = "", sLegendLine;
 	for (i=0; i < cN; i+=1)
 		string traceLabel = GetDimLabel(theSim.CWave, 1, i);
 		if (strlen(traceLabel))
@@ -462,7 +467,7 @@ function simNPVPlotBuild(plotN, theSim, direction, commTraceN, nameSuffix)
 			AppendToGraph   /W=$plotN  theSim.SWave[*][theSim.S_C_Offs + theSim.S_C_Num * i + 0]/TN=$traceN vs theSim.SWave[*][0]
 		endif
 		variable r = 0 , g = 0 , b = 0 ;
-		variable relColor = i/(cN -1) 
+		variable relColor = (i+1)/cN 
 		switch (direction)
 			case -1: // reduction
 			case 1: // oxidation
@@ -473,15 +478,18 @@ function simNPVPlotBuild(plotN, theSim, direction, commTraceN, nameSuffix)
 				break;
 		endswitch
 		ModifyGraph  /W=$plotN rgb($traceN)=(r, g, b), lstyle($traceN)=(lstyle)
+		sprintf sLegendLine "\r %s[*][%d] \s(%s)", nameofwave(theSim.SWave), i, traceN
+		sLegend += sLegendLine
 	endfor
 	
-	Label /W=$plotN right "E\\Bapp\\M / V"
+	Label /W=$plotN right EAxisLabel
 	Label /W=$plotN bottom "time / s"
 	Label /W=$plotN left "[C\\Bi\\M] \\E"
 	
 	string plotLabel
 	sprintf plotLabel, "Sim:%s\rmore info here...", nameofwave(theSim.SWave)
-	TextBox/C/N=PlotLbl/F=0/M/B=1/A=RT/X=50/Y=50 plotLabel
+	plotLabel += sLegend
+	TextBox/C/N=PlotLbl/F=0/M/B=1/A=RT/X=70/Y=10 plotLabel
 end	
 
 
@@ -683,11 +691,11 @@ function setOutCleanup_NPV_CE0(setData, setEntries, setResultWN)
 			wave CWave = setEntries.sims[i].CWave
 			killwaves /Z CWave;
 		endif
-		if (cmpstr(GetWavesDataFolder(setEntries.sims[i].ERxnsW,2) , GetWavesDataFolder(setData.ERxnsW,2)))
+		if ((waveexists(setData.ERxnsW)) && (cmpstr(GetWavesDataFolder(setEntries.sims[i].ERxnsW,2) , GetWavesDataFolder(setData.ERxnsW,2))))
 			wave /WAVE ERxnsW = setEntries.sims[i].ERxnsW
 			killwaves /Z ERxnsW;
 		endif
-		if (cmpstr(GetWavesDataFolder(setEntries.sims[i].GRxnsW,2) , GetWavesDataFolder(setData.GRxnsW,2)))
+		if ((waveexists(setData.GRxnsW)) && (cmpstr(GetWavesDataFolder(setEntries.sims[i].GRxnsW,2) , GetWavesDataFolder(setData.GRxnsW,2))))
 			wave /WAVE GRxnsW = setEntries.sims[i].GRxnsW
 			killwaves /Z GRxnsW;
 		endif
@@ -1430,7 +1438,198 @@ function kiloNPVDevPlotAppend(plotN, compNum, direction, nrnstW, traceN, itemN, 
 	SetAxis /W=$plotN bottom -0.5,0.5
 end	
 
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+function 	DoMakeClb(method, E0, EStep,  NCycles, nref, eRef, EClbWN)
+			string method
+			variable E0, EStep
+			variable NCycles, nRef, eRef
+			string EClbWN
+
+			variable nSpectra = NCycles;
+			if (nRef)
+				nSpectra += 1 
+			endif
+			make /O/D/N=(nSpectra) $EClbWN
+			wave ClbW = $EClbWN
+
+			variable cPnt = 0
+			variable i, s, E = E0;
+
+			if (nRef)
+				ClbW[cPnt] = ERef; // initial 
+				cPnt +=1; 
+			endif
+
+			for (s=0; s<NCycles; s+=1)
+				ClbW[cPnt] = E
+				E+=EStep;
+				cPnt +=1
+			endfor 
+			
+
+end
 
 
+function DoSplitComponents(method, DataW, NCycles, EChWN, BkgWN, skipSteps, nBlanks, nRefs, nTrailers)
+			string method
+			wave DataW
+			variable NCycles, nBlanks, nRefs, nTrailers, skipSteps
+			string EChWN, BkgWN 
+			print "DoSplitComponents(",method,",",nameofwave(DataW),",",num2str(NCycles),",",EChWN,",", BkgWN,",", num2str(skipSteps),",", num2str(nBlanks),",", num2str(nRefs),",", num2str(nTrailers),")"
+		
+			variable nSpectra = NCycles;
+			strswitch (method)
+				case "seesaw":
+				case "pulse":
+				case "repeat":
+					nSpectra = NCycles;
+					break;
+				case "repeat_ave":
+					nSpectra = 1;
+					break;
+				default :
+				return -1;
+			endswitch 
+			
+			string DataWN = nameofwave(DataW)
+			variable nDim0 = dimsize($DataWN, 0)
+			if (nRefs>0) 
+				nSpectra += 1;
+			endif
 
+			if (nSpectra > 1)
+				make /O/D/N=(nDim0, nSpectra) $EChWN
+				make /O/D/N=(nDim0, nSpectra) $BkgWN
+			else
+				make /O/D/N=(nDim0) $EChWN
+				make /O/D/N=(nDim0) $BkgWN
+			endif
+			wave EChW = $EChWN
+			wave BkgW = $BkgWN
+
+			variable cPnt = 0 // component (result) pointer
+			variable dPnt; // data pointer
+			
+			// move data pointer to skip blanks and cycles as requested
+			dPnt = nBlanks;
+			strswitch (method)
+				case "seesaw":
+					dPnt += skipSteps*3;
+					break;
+				case "pulse":
+				case "repeat":
+				case "repeat_ave":
+					dPnt += skipSteps*2;
+					if (skipsteps > 0)
+						dPnt+=1; // in pulse mode the first 
+					endif
+					break;
+					
+				default :
+				return -1;
+			endswitch 
+
+
+			// average reference spectra
+			variable i, s;
+			if (nRefs > 0 )
+				EChW[][cPnt] = 0; 
+				for (i=0; i< nRefs; i+=1)
+					EChW[][cPnt]  += DataW[p][dPnt+i]
+				endfor
+				EChW[][cPnt] /= nRefs;
+				if (skipSteps>0) // this is reverse leg
+					strswitch (method)
+						case "seesaw":
+						case "repeat":
+						case "repeat_ave":
+							// check what should go on here
+							break;
+						case "pulse":
+							dPnt+=1; 
+							break;
+						default :
+						return -1;
+					endswitch 
+				endif
+				dPnt+=nRefs-1;
+				cPnt +=1;  // output[0] now contains averaged reference
+			endif
+
+			// perform splitting
+			variable verbose = 0;
+			strswitch (method)
+				case "seesaw":
+					for (s=0; ((s<NCycles) && (cPnt < nSpectra)); s+=1)
+						EChW[][cPnt]= EChW[p][cPnt-1]+ 0.25 * (- DataW[p][dPnt] + 3 * DataW[p][dPnt+1] - 3 * DataW[p][dPnt+2]+  DataW[p][dPnt+3]) 
+						BkgW[][cPnt] = BkgW[p][cPnt-1]+0.25 * (- DataW[p][dPnt] - DataW[p][dPnt+1] + DataW[p][dPnt+2] + DataW[p][dPnt+3])
+						dPnt +=3
+						cPnt +=1
+					endfor 
+					break;
+				case "pulse":
+				case "repeat": // this does not allow for half-cycle
+					for (s=0; ((s<NCycles) && (cPnt < nSpectra - 1)); s+=1)
+						EChW[][cPnt]= 0.5 * (- DataW[p][dPnt] + 2 * DataW[p][dPnt+1] -  DataW[p][dPnt+2]) 
+						BkgW[][cPnt] = 0.5 * (- DataW[p][dPnt] + DataW[p][dPnt+2])
+						dPnt +=2
+						cPnt +=1
+					EChW[][cPnt]= - DataW[p][dPnt] +  DataW[p][dPnt+1] - BkgW[p][cPnt-1]
+					BkgW[][cPnt] = 0
+
+					endfor 
+					break;
+				case "repeat_ave":
+					variable n_high = floor(NCycles);
+					variable n_low = ceil(NCycles); // this may be same as n_high or larger if the number of measurements is odd
+					variable factor = 1 / n_high;
+					EChW[][cPnt]  = 0;
+					if (verbose) 
+						print "cycles: ", nCycles, " high:",n_high, " low:", n_low 
+						print "add:"
+					endif;
+					
+					for (s=0; s < n_high; s+=1)
+						EChW[][cPnt] += factor* DataW[p][dPnt + 1 + s*2]  
+						if (verbose) 
+							print dPnt + 1 + s*2 
+						endif;
+					endfor 
+					factor = 1 / n_low;
+					if (verbose) 
+						print "subtract:" 
+					endif 
+					for (s=0; s < n_low; s+=1)
+						EChW[][cPnt] -= factor* DataW[p][dPnt + s*2]  
+						if (verbose) 
+							print dPnt + s*2 
+						endif
+					endfor 
+					BkgW[][cPnt] = (DataW[p][dPnt + n_low *2 -1]   - DataW[p][dPnt] ) / NCycles
+					if (! mod(NCycles, 2)) // even, complete cycle
+						BkgW[][cPnt] -=  EChW[p][cPnt]   / NCycles;
+						EChW[][cPnt] -= 0.5 * BkgW[p][cPnt] ;  //why?!! Check math
+						if (verbose) 
+							print "even number of cylces,", num2str(NCycles), ", subtract ", num2str(cPnt) 
+						endif
+					else
+						if (verbose) 
+							print "odd number of cylces,", num2str(NCycles) 
+						endif
+					endif
+					break;
+				default :
+					return -1;
+			endswitch 
+
+			if (nRefs > 0) // only in this case first trace is a reference
+				ControlInfo   /W=SEChemPanel DataSubtrFirstCheck
+				if (V_Value) // subtract the first from the rest....
+					EChW[][1,] = EChW[p][q] - EChW[p][0]
+					BkgW[][1,] = BkgW[p][q] - BkgW[p][0]
+					EChW[][0] = 0
+					BkgW[][0] = 0
+				endif 
+			endif
+end
 

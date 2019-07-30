@@ -17,7 +17,7 @@
 #pragma version = 20190711
 #pragma ModuleName = KES_GUI
 #pragma hide=1
-strconstant cKESGUIVer = "1.7.0a"
+strconstant cKESGUIVer = "1.7.0b"
 
 #include ":KES_Core", version >= 20190711
 #include ":KES_Sets", version >= 20190711
@@ -538,7 +538,7 @@ function makeKinESimCtrl() // : Panel
 	SetVariable kiloParam2Edit,limits={-inf,inf,0},value= _STR:"-"
 	SetVariable kiloFlagsEdit,pos={242,v+101},size={71,16},bodyWidth=45,proc=kiloFlagsEditProc,title="flags"
 	SetVariable kiloFlagsEdit,help={"Simulation-depended flags for his set. The meaning of this flag varies between slelected setup and processing functions."}
-	SetVariable kiloFlagsEdit,limits={1,inf,1},value= _STR:"-"
+	SetVariable kiloFlagsEdit,limits={0,inf,1},value= _STR:"-"
 	Button kiloDoIt,pos={220,v+142},size={90,22},proc=kiloDoIt,title="do kilo set"
 	Button kiloDoIt,help={"Start a kilo-set of simulation sets. "},fStyle=1
 	RenameWindow #,Kilo
@@ -586,7 +586,7 @@ function makeKinESimCtrl() // : Panel
 	SetVariable megaParam2Edit,limits={-inf,inf,0},value= _STR:"-"
 	SetVariable megaFlagsEdit,pos={243,v+101},size={71,16},bodyWidth=45,proc=megaFlagsEditProc,title="flags"
 	SetVariable megaFlagsEdit,help={"Simulation-depended flags for his set. The meaning of this flag varies between slelected setup and processing functions."}
-	SetVariable megaFlagsEdit,limits={1,inf,1},value= _STR:"-"
+	SetVariable megaFlagsEdit,limits={0,inf,1},value= _STR:"-"
 	Button megaDoIt,pos={220,v+142},size={90,22},proc=megaDoIt,title="do mega set"
 	Button megaDoIt,help={"Start a mega-set of simulation kilo-sets. "},fStyle=1
 	RenameWindow #,Mega
