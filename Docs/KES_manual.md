@@ -33,7 +33,7 @@ The code consists of three units:
 	- KES_GUI_Rxns.ipf
 
 ## Kin-E-Sim Demo
-A demo of Kin-E-Sim containing pre-loaded simulations is available [here](https://github.com/dap-biospec/UTEIU1dq7RRTfvV9/blob/master/test/Demo).
+A demo of Kin-E-Sim containing pre-loaded simulations is available [here](https://github.com/dap-biospec/KinESim/tree/master/Demo).
 
 ## Performance Testing
 A performance test is available [here](https://github.com/dap-biospec/KinESim/tree/master/Demo/PerformanceTest.md).
