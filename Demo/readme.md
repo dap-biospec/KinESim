@@ -36,7 +36,7 @@ Click `do this sim` and the graph should change to look like this:
 
 This gives us a much better view of how our analyte behaves. 
 
-Now letís try simulating a scenario.
+Now let‚Äôs try simulating a scenario.
 
 In this scenario, we have a single analyte with slow electrochemical kinetics on the electrode. 
 
@@ -53,18 +53,18 @@ Notice that our analyte is no longer being completely reduced or oxidized at eac
 Our goal now is to find a mediator that will improve the rate of electron transfer to and from the analyte so that we can achieve a profile like we saw in Figure 2.
 
 ## Adding Components
-Letís add a new component that will represent our mediator to our components panel.
+Let‚Äôs add a new component that will represent our mediator to our components panel.
 To do this click the `+C#` button in the `components` panel
 
-A new component has been made but it needs a name. Type ìMediator 1î into the text box.
+A new component has been made but it needs a name. Type ‚ÄúMediator 1‚Äù into the text box.
 
 You can switch between the analyte and mediator 1 by clicking the drop down menu labeled `C #` and selecting `0` (the analyte) or `1` (the mediator). 
 
-Letís give our mediator some electrochemical properties. The default value for the redox potential (`E0`) is 0 V. Keep this value 0. Change `n` to 1. This means that the mediator transfers 1 electron per mediator molecule. Change `alpha` to 0.5. This represents the alpha of the mediator. This value is typically assumed to be 0.5 for most electrochemically active species.
+Let‚Äôs give our mediator some electrochemical properties. The default value for the redox potential (`E0`) is 0 V. Keep this value 0. Change `n` to 1. This means that the mediator transfers 1 electron per mediator molecule. Change `alpha` to 0.5. This represents the alpha of the mediator. This value is typically assumed to be 0.5 for most electrochemically active species.
 
 We want a mediator with fast kinetics so change `ET rate` to 0.2 and `lim. Rate` to 0.5.
 
-Now that weíve described our mediator we still need to add some amount of the mediator to our simulated electrochemical reaction. Since we are performing oxidation, we will start with a completely reduced sample. `[ox.]` is the concentration of oxidized mediator in the sample in molarity and should remain 0. Change `[rd.]`, the concentration of reduced mediator in the sample to 0.0002 M. 
+Now that we‚Äôve described our mediator we still need to add some amount of the mediator to our simulated electrochemical reaction. Since we are performing oxidation, we will start with a completely reduced sample. `[ox.]` is the concentration of oxidized mediator in the sample in molarity and should remain 0. Change `[rd.]`, the concentration of reduced mediator in the sample to 0.0002 M. 
 
 Click `do this sim` and see how it looks:
 
@@ -78,7 +78,7 @@ To fix this we need to add an E-chem reaction.
 
 To do this, click the ![alt text](https://github.com/dap-biospec/KinESim/blob/master/Docs/Figures/Rxns_create.png) button in the `E-Chem reactions` panel. This will generate the Igor waves needed to describe an E-Chem reaction. 
 
-Name the reaction ìM1+Aî by typing the name in the text box of the `E-chem reactions` panel. 
+Name the reaction ‚ÄúM1+A‚Äù by typing the name in the text box of the `E-chem reactions` panel. 
 
 Below is a table that describes the E-chem reaction. See the [manual](https://github.com/dap-biospec/KinESim/blob/master/Docs/KES_manual.md#Echem-reactions) for a description of the table. 
 
@@ -92,7 +92,7 @@ We need to add a row so that there is one row for the analyte and one row for th
 
 Click the `+ row` button to add a row. 
 
-Now fill in the table as shown below:
+Now fill in the table as shown below pressing the enter or return key after typing each number:
 
 ![alt text](https://github.com/dap-biospec/KinESim/blob/master/Docs/Figures/demoFig6.png)
 
@@ -104,20 +104,20 @@ KinESim automatically understands that this reaction can occur in the reverse or
 
 Now we just need to input a value for the rate constant of the forward reaction. Change `k(fwd)` to 500. This will make the electron transfer between the mediator and analyte fast. 
 
-Click `do this sim` and letís see how well our mediator works.
+Click `do this sim` and let‚Äôs see how well our mediator works.
  
 ![alt text](https://github.com/dap-biospec/KinESim/blob/master/Docs/Figures/demoFig7.png) 
  
 The concentration of the analyte profile has improved but the reduction process still seems a bit sluggish.
 
 ## Performing a set of simulations
-Letís see what effect the redox potential of the mediator has on its ability to perform electron transfer with the analyte. Weíll want to sample a range of redox potential values. We can do all of this at once using the `sim. set` panel. 
+Let‚Äôs see what effect the redox potential of the mediator has on its ability to perform electron transfer with the analyte. We‚Äôll want to sample a range of redox potential values. We can do all of this at once using the `sim. set` panel. 
 
 The `sim. set` panel is already set up to change the redox potential from -0.2 to 0 in 3 steps for component number 0. This means that three simulations will be performed where the analyte redox potential is varied between -0.2 V, -0.1 V, and 0.0 V. But we want to vary the redox potential of the mediator, not the analyte. Change `vary C#` to 1. 
 
 Before we run the simulation we should change the name of the simulation. KinESim uses this name when it generates waves and graphs of simulated data. Therefore, performing a simulation with the same name as the previous will overwrite the previous data. For this reason, it is good practice to use a different name for every simulation you perform. 
 
-Change the `base name` in the `simulation` section to ìM_Ox_setî
+Change the `base name` in the `simulation` section to ‚ÄúM_Ox_set‚Äù
 
 Now click `do single set`
 
