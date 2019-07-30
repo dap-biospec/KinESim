@@ -1,7 +1,7 @@
 
 # Performance Test
 
-A performance test file is provided to test the behavior of the program after changes are made to the core programming. 
+A performance test [file](https://github.com/dap-biospec/KinESim/blob/master/Demo/KES_Test.pxp) is provided to test the behavior of the program after changes are made to the core programming. 
 
 Load the file: KES_Test.pxp
 
