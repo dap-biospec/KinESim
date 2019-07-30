@@ -13,6 +13,8 @@ A [manual](https://github.com/dap-biospec/KinESim/blob/master/Docs/KES_manual.md
 
 A demo of Kin-E-Sim containing pre-loaded simulations is available [here](https://github.com/dap-biospec/KinESim/blob/master/Demo).
 
+A performance test is provided [here](https://github.com/dap-biospec/KinESim/blob/master/Demo/PerformanceTest.md).
+
 An API can be found [here](https://github.com/dap-biospec/KinESim/blob/master/Docs/KES_API.md). 
 
 ## Community Guidelines
